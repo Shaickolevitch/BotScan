@@ -1,0 +1,103 @@
+import os
+import httpx
+import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
+REDIRECT_URI = "http://localhost:8501"
+
+def get_google_auth_url():
+    params = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": "openid email profile",
+        "access_type": "offline",
+    }
+    base_url = "https://accounts.google.com/o/oauth2/v2/auth"
+    query = "&".join(f"{k}={v}" for k, v in params.items())
+    return f"{base_url}?{query}"
+
+def exchange_code_for_token(code: str) -> dict:
+    response = httpx.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": GOOGLE_CLIENT_ID,
+            "client_secret": GOOGLE_CLIENT_SECRET,
+            "redirect_uri": REDIRECT_URI,
+            "grant_type": "authorization_code",
+        }
+    )
+    return response.json()
+
+def get_user_info(access_token: str) -> dict:
+    response = httpx.get(
+        "https://www.googleapis.com/oauth2/v2/userinfo",
+        headers={"Authorization": f"Bearer {access_token}"}
+    )
+    return response.json()
+
+def handle_google_callback():
+    """Check if Google sent a code back and exchange it for user info"""
+    params = st.query_params
+    if "code" in params:
+        code = params["code"]
+        token_data = exchange_code_for_token(code)
+        if "access_token" in token_data:
+            user_info = get_user_info(token_data["access_token"])
+            st.session_state["user"] = {
+                "email": user_info.get("email"),
+                "name": user_info.get("name"),
+                "picture": user_info.get("picture"),
+            }
+            st.query_params.clear()
+            st.rerun()
+
+def is_logged_in() -> bool:
+    return "user" in st.session_state
+
+def get_current_user() -> dict:
+    return st.session_state.get("user", {})
+
+def logout():
+    if "user" in st.session_state:
+        del st.session_state["user"]
+    st.rerun()
+
+def render_login_page():
+    st.markdown("""
+        <div style="text-align: center; padding: 4rem 0 2rem;">
+            <div style="font-size: 48px;">🔍</div>
+            <h1 style="font-size: 32px; font-weight: 700; color: #f9fafb; margin: 0.5rem 0;">BotScan</h1>
+            <p style="color: #9ca3af; font-size: 16px; margin-bottom: 2rem;">
+                Detect fake engagement on X/Twitter
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    auth_url = get_google_auth_url()
+
+    st.markdown(f"""
+        <div style="text-align: center;">
+            <a href="{auth_url}" target="_self" style="
+                display: inline-block;
+                background: #ffffff;
+                color: #1f2937;
+                padding: 12px 28px;
+                border-radius: 8px;
+                font-size: 15px;
+                font-weight: 600;
+                text-decoration: none;
+                border: 1px solid #e5e7eb;
+            ">
+                🔐 Sign in with Google
+            </a>
+        </div>
+        <p style="text-align: center; color: #6b7280; font-size: 12px; margin-top: 3rem;">
+            © 2026 Shai Gian. All rights reserved.
+        </p>
+    """, unsafe_allow_html=True)
