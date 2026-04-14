@@ -1,4 +1,5 @@
 import os
+import urllib.parse
 import httpx
 import streamlit as st
 from dotenv import load_dotenv
@@ -18,7 +19,7 @@ def get_google_auth_url():
         "access_type": "offline",
     }
     base_url = "https://accounts.google.com/o/oauth2/v2/auth"
-    query = "&".join(f"{k}={v}" for k, v in params.items())
+    query = urllib.parse.urlencode(params)
     return f"{base_url}?{query}"
 
 def exchange_code_for_token(code: str) -> dict:
@@ -80,10 +81,6 @@ def render_login_page():
     """, unsafe_allow_html=True)
 
     auth_url = get_google_auth_url()
-
-    # Debug - remove after fixing
-    st.write(f"Debug - Redirect URI: {REDIRECT_URI}")
-    st.write(f"Debug - Auth URL: {auth_url}")
 
     st.markdown(f"""
         <div style="text-align: center;">
