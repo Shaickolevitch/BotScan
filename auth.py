@@ -7,7 +7,6 @@ load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-import os
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8501")
 
 def get_google_auth_url():
@@ -81,6 +80,10 @@ def render_login_page():
     """, unsafe_allow_html=True)
 
     auth_url = get_google_auth_url()
+
+    # Debug - remove after fixing
+    st.write(f"Debug - Redirect URI: {REDIRECT_URI}")
+    st.write(f"Debug - Auth URL: {auth_url}")
 
     st.markdown(f"""
         <div style="text-align: center;">
