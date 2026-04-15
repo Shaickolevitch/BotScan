@@ -76,17 +76,14 @@ if path == "refund":
 ## Refund Policy
 Last updated: April 15, 2026
 
-### Our Guarantee
-Full refund within 7 days of purchase.
-
-### How to Request
-Email shaigian1@gmail.com with your account email.
+### No Refunds
+All purchases are final. We do not offer refunds.
 
 ### Cancellations
-Cancel anytime, keep access until end of billing period.
+You can cancel your subscription at any time. You will retain access until the end of your current billing period. No further charges will be made after cancellation.
 
 ### Contact
-shaigian1@gmail.com
+For any questions: shaigian1@gmail.com
     """)
     st.stop()
 
