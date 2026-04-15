@@ -167,7 +167,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.write("BotScan is live 🚀")
+
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 handle_google_callback()
