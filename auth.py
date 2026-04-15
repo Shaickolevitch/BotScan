@@ -44,7 +44,6 @@ def get_user_info(access_token: str) -> dict:
     return response.json()
 
 def handle_google_callback():
-    # Try to restore session from token in query params
     params = st.query_params
 
     if "token" in params and "user" not in st.session_state:
@@ -54,7 +53,6 @@ def handle_google_callback():
             st.session_state["user"] = user
             st.session_state["token"] = token
 
-    # Handle Google OAuth callback
     if "code" in params:
         code = params["code"]
         token_data = exchange_code_for_token(code)
@@ -102,8 +100,6 @@ def render_login_page():
 
     st.markdown(f"""
     <div style="background:#0f1117; min-height:100vh; font-family:sans-serif; color:#f9fafb;">
-
-        <!-- Nav -->
         <nav style="display:flex; justify-content:space-between; align-items:center; padding:16px 32px; border-bottom:1px solid #2a2d3a;">
             <div style="font-size:18px; font-weight:700;">🔍 BotScan</div>
             <div style="display:flex; gap:24px; align-items:center;">
@@ -112,8 +108,6 @@ def render_login_page():
                 <a href="{auth_url}" target="_self" style="background:#534AB7; color:#fff; padding:8px 20px; border-radius:8px; font-size:14px; font-weight:600; text-decoration:none;">Sign in</a>
             </div>
         </nav>
-
-        <!-- Hero -->
         <div style="text-align:center; padding:80px 32px 60px;">
             <div style="display:inline-block; background:#1a1d27; border:1px solid #534AB7; color:#a89ef0; font-size:12px; padding:4px 14px; border-radius:20px; margin-bottom:24px;">
                 AI-Powered Engagement Analysis
@@ -128,8 +122,6 @@ def render_login_page():
                 🔐 Get Started Free
             </a>
         </div>
-
-        <!-- Features -->
         <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; padding:0 32px 60px; max-width:900px; margin:0 auto;">
             <div style="background:#1a1d27; border:1px solid #2a2d3a; border-radius:12px; padding:20px;">
                 <div style="font-size:24px; margin-bottom:12px;">🤖</div>
@@ -147,8 +139,6 @@ def render_login_page():
                 <p style="font-size:13px; color:#9ca3af; line-height:1.6;">Instantly see specific red flags that indicate fake or paid engagement.</p>
             </div>
         </div>
-
-        <!-- Pricing -->
         <div style="text-align:center; padding:0 32px 60px;">
             <h2 style="font-size:28px; font-weight:700; margin-bottom:32px; color:#f9fafb;">Simple pricing</h2>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px; max-width:700px; margin:0 auto;">
@@ -178,8 +168,6 @@ def render_login_page():
                 </div>
             </div>
         </div>
-
-        <!-- Footer -->
         <footer style="border-top:1px solid #2a2d3a; padding:24px 32px; display:flex; justify-content:space-between; align-items:center;">
             <div style="font-size:12px; color:#6b7280;">© 2026 Shai Gian · BotScan</div>
             <div style="display:flex; gap:20px;">
@@ -188,29 +176,5 @@ def render_login_page():
                 <a href="/?page=refund" target="_self" style="font-size:12px; color:#6b7280; text-decoration:none;">Refund Policy</a>
             </div>
         </footer>
-
     </div>
-    """, unsafe_allow_html=True)
-
-    auth_url = get_google_auth_url()
-
-    st.markdown(f"""
-        <div style="text-align: center;">
-            <a href="{auth_url}" target="_self" style="
-                display: inline-block;
-                background: #ffffff;
-                color: #1f2937;
-                padding: 12px 28px;
-                border-radius: 8px;
-                font-size: 15px;
-                font-weight: 600;
-                text-decoration: none;
-                border: 1px solid #e5e7eb;
-            ">
-                🔐 Sign in with Google
-            </a>
-        </div>
-        <p style="text-align: center; color: #6b7280; font-size: 12px; margin-top: 3rem;">
-            © 2026 Shai Gian. All rights reserved.
-        </p>
     """, unsafe_allow_html=True)
