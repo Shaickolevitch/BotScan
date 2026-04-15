@@ -519,10 +519,10 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                         st.markdown(f'<div class="section-title" style="margin-top:16px;">@{result["username"]}</div>', unsafe_allow_html=True)
                         
 
-c1, c2, c3 = st.columns(3)
-c1.metric(t["followers"], fmt(result['followers']))
-c2.metric(t["following"], fmt(result['following']))
-c3.metric(t["total_tweets"], fmt(result['total_tweets']))
+                    c1, c2, c3 = st.columns(3)
+                    c1.metric(t["followers"], fmt(result['followers']))
+                    c2.metric(t["following"], fmt(result['following']))
+                    c3.metric(t["total_tweets"], fmt(result['total_tweets']))
 
                     with st.expander("📊 Score Breakdown"):
                         breakdown = result.get("score_breakdown", {})
