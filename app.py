@@ -7,11 +7,17 @@ from history import save_to_history, load_history
 from translations import TRANSLATIONS
 from auth import handle_google_callback, is_logged_in, get_current_user, logout, render_login_page
 from admin import is_admin, render_admin_page
-from billing import can_analyze, increment_usage, get_usage_display, create_checkout_session, activate_plan, get_plan, BASIC_PRICE_ID, PRO_PRICE_ID
+from billing import (
+    can_analyze, increment_usage, get_usage_display,
+    create_checkout_session, activate_plan, get_plan,
+    get_pending_subscription, get_subscription_status,
+    BASIC_PRICE_ID, PRO_PRICE_ID
+)
 from emailer import send_analysis_email
 
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
-# Handle policy pages BEFORE login check
+
+# ── Policy pages (before login) ───────────────────────────────────────────────
 path = st.query_params.get("page", "")
 
 def render_policy_nav():
@@ -87,43 +93,7 @@ For any questions: shaigian1@gmail.com
     """)
     st.stop()
 
-if path == "privacy":
-    st.markdown("""
-    # Privacy Policy
-    Last updated: April 15, 2026
-    
-    ## 1. Information We Collect
-    Email and name via Google login. Analysis history.
-    
-    ## 2. How We Use It
-    To provide BotScan service and send reports.
-    
-    ## 3. Data Storage
-    Stored securely. Never sold to third parties.
-    
-    ## 4. Contact
-    shaigian1@gmail.com
-    """)
-    st.stop()
-
-if path == "refund":
-    st.markdown("""
-    # Refund Policy
-    Last updated: April 15, 2026
-    
-    ## Our Guarantee
-    Full refund within 7 days of purchase.
-    
-    ## How to Request
-    Email shaigian1@gmail.com with your account email.
-    
-    ## Cancellations
-    Cancel anytime, keep access until end of billing period.
-    
-    ## Contact
-    shaigian1@gmail.com
-    """)
-    st.stop()
+# ── Styles ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
     .stApp { background-color: #0f1117; }
@@ -196,6 +166,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
 handle_google_callback()
 
 if not is_logged_in():
@@ -204,25 +175,40 @@ if not is_logged_in():
 
 user = get_current_user()
 email = user["email"]
-name = user["name"]
+name  = user["name"]
 picture = user.get("picture", "")
 
+# ── PayPal return handling (replaces Stripe session_id check) ─────────────────
 params = st.query_params
-if "session_id" in params:
-    session_id = params["session_id"]
-    try:
-        import stripe, os
-        stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
-        session = stripe.checkout.Session.retrieve(session_id)
-        price_id = session["line_items"]["data"][0]["price"]["id"] if "line_items" in session else None
-        if session.get("payment_status") == "paid":
-            plan = "pro" if price_id == os.getenv("STRIPE_PRO_PRICE_ID") else "basic"
-            activate_plan(email, plan)
-            st.success(f"🎉 Welcome to BotScan {plan.capitalize()}!")
-    except:
-        pass
+
+if params.get("paypal") == "success":
+    pending = get_pending_subscription(email)
+    if pending:
+        sub_id  = pending["subscription_id"]
+        plan_id = pending["plan_id"]
+        try:
+            status = get_subscription_status(sub_id)
+            if status == "ACTIVE":
+                plan_name = "pro" if plan_id == PRO_PRICE_ID else "basic"
+                activate_plan(email, plan_name)
+                st.query_params.clear()
+                st.success(f"🎉 Welcome to BotScan {plan_name.capitalize()}!")
+                st.rerun()
+            else:
+                # Still APPROVAL_PENDING — ask user to wait and refresh
+                st.warning("⏳ Payment is still processing. Please wait a moment and refresh the page.")
+                st.stop()
+        except Exception as e:
+            st.error(f"Could not verify payment: {e}")
+            st.stop()
+    else:
+        st.query_params.clear()
+
+if params.get("paypal") == "cancel":
+    st.info("Subscription cancelled. You can try again from the Plans page.")
     st.query_params.clear()
 
+# ── Top nav ───────────────────────────────────────────────────────────────────
 usage = get_usage_display(email)
 plan_color = "#10b981" if usage["plan"] == "Pro" else "#534AB7" if usage["plan"] == "Basic" else "#6b7280"
 
@@ -251,6 +237,7 @@ with col4:
     if st.button("Logout", use_container_width=True):
         logout()
 
+# ── Admin page ────────────────────────────────────────────────────────────────
 if st.session_state.get("page") == "admin" and is_admin(email):
     if st.button("← Back"):
         st.session_state["page"] = "main"
@@ -258,10 +245,16 @@ if st.session_state.get("page") == "admin" and is_admin(email):
     render_admin_page()
     st.stop()
 
+# ── Pricing page ──────────────────────────────────────────────────────────────
 if st.session_state.get("page") == "pricing":
     if st.button("← Back"):
         st.session_state["page"] = "main"
         st.rerun()
+
+    # Build return URLs dynamically
+    app_url = os.getenv("APP_URL", "http://localhost:8501")
+    success_url = f"{app_url}/?paypal=success"
+    cancel_url  = f"{app_url}/?paypal=cancel"
 
     st.markdown("""
         <div style="text-align: center; padding: 1rem 0 2rem;">
@@ -308,12 +301,13 @@ if st.session_state.get("page") == "pricing":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#534AB7; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Basic →", use_container_width=True, key="basic_btn"):
-                checkout_url = create_checkout_session(
-                    email=email,
-                    price_id=BASIC_PRICE_ID,
-                    success_url="http://localhost:8501",
-                    cancel_url="http://localhost:8501"
-                )
+                with st.spinner("Redirecting to PayPal..."):
+                    checkout_url = create_checkout_session(
+                        email=email,
+                        price_id=BASIC_PRICE_ID,
+                        success_url=success_url,
+                        cancel_url=cancel_url,
+                    )
                 st.markdown(f'<meta http-equiv="refresh" content="0; url={checkout_url}">', unsafe_allow_html=True)
 
     with col3:
@@ -333,17 +327,20 @@ if st.session_state.get("page") == "pricing":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#10b981; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Pro →", use_container_width=True, key="pro_btn"):
-                checkout_url = create_checkout_session(
-                    email=email,
-                    price_id=PRO_PRICE_ID,
-                    success_url="http://localhost:8501",
-                    cancel_url="http://localhost:8501"
-                )
+                with st.spinner("Redirecting to PayPal..."):
+                    checkout_url = create_checkout_session(
+                        email=email,
+                        price_id=PRO_PRICE_ID,
+                        success_url=success_url,
+                        cancel_url=cancel_url,
+                    )
                 st.markdown(f'<meta http-equiv="refresh" content="0; url={checkout_url}">', unsafe_allow_html=True)
 
     st.stop()
 
-# Main app
+# ── Main app ──────────────────────────────────────────────────────────────────
+import os
+
 st.markdown("""
     <div style="text-align: center; padding: 1rem 0 0.5rem;">
         <div style="font-size: 40px;">🔍</div>
@@ -354,7 +351,7 @@ st.markdown("""
 
 remaining = usage["remaining"]
 limit = usage["limit"]
-used = usage["used"]
+used  = usage["used"]
 if usage["plan"] != "Pro":
     used_pct = int((used / limit) * 100) if limit else 0
     bar_color = "#10b981" if used_pct < 70 else "#f59e0b" if used_pct < 90 else "#ef4444"
@@ -396,9 +393,9 @@ def make_gauge(score):
             "bgcolor": "#1a1d27",
             "bordercolor": "#2a2d3a",
             "steps": [
-                {"range": [0, 40], "color": "#2a1a1a"},
+                {"range": [0, 40],  "color": "#2a1a1a"},
                 {"range": [40, 70], "color": "#2a2410"},
-                {"range": [70, 100], "color": "#0d2a1f"},
+                {"range": [70, 100],"color": "#0d2a1f"},
             ],
             "threshold": {
                 "line": {"color": color, "width": 3},
@@ -417,10 +414,10 @@ def make_gauge(score):
 
 def render_score_breakdown(breakdown: dict):
     labels = {
-        "account_age": "👤 Account Age",
-        "follower_ratio": "⚖️ Follower/Following Ratio",
+        "account_age":      "👤 Account Age",
+        "follower_ratio":   "⚖️ Follower/Following Ratio",
         "like_reply_ratio": "💬 Like/Reply Ratio",
-        "engagement_rate": "📈 Engagement Rate",
+        "engagement_rate":  "📈 Engagement Rate",
         "retweet_like_ratio": "🔁 Retweet/Like Ratio",
     }
     for key, label in labels.items():
@@ -460,7 +457,7 @@ def generate_excel(result, url):
             bd_data = {
                 "Signal": ["Account Age", "Follower/Following Ratio", "Like/Reply Ratio",
                            "Engagement Rate", "Retweet/Like Ratio"],
-                "Score": [
+                "Score":  [
                     breakdown.get("account_age", 0),
                     breakdown.get("follower_ratio", 0),
                     breakdown.get("like_reply_ratio", 0),
@@ -471,7 +468,7 @@ def generate_excel(result, url):
             pd.DataFrame(bd_data).to_excel(writer, sheet_name="Score Breakdown", index=False)
     return output.getvalue()
 
-# Input
+# ── Input & analysis ──────────────────────────────────────────────────────────
 url = st.text_input(t["input_label"], placeholder=t["input_placeholder"])
 
 if st.button(t["analyze_button"], type="primary", use_container_width=True):
@@ -524,9 +521,9 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     st.markdown("---")
                     st.markdown(f'<div class="section-title">{t["tweet_metrics"]}</div>', unsafe_allow_html=True)
                     c1, c2, c3, c4 = st.columns(4)
-                    c1.metric(t["likes"], f"{result['likes']:,}")
-                    c2.metric(t["retweets"], f"{result['retweets']:,}")
-                    c3.metric(t["replies"], f"{result['replies']:,}")
+                    c1.metric(t["likes"],       f"{result['likes']:,}")
+                    c2.metric(t["retweets"],    f"{result['retweets']:,}")
+                    c3.metric(t["replies"],     f"{result['replies']:,}")
                     c4.metric(t["impressions"], f"{result['impressions']:,}")
 
                     st.markdown(f'<div class="tweet-quote">{result["tweet_text"]}</div>', unsafe_allow_html=True)
@@ -545,7 +542,7 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     else:
                         st.success(t["no_red_flags"])
 
-                    # Email notification
+                    # Email report
                     st.markdown("---")
                     st.markdown('<div class="section-title">📧 Email Report</div>', unsafe_allow_html=True)
                     email_mode = st.radio(
@@ -563,7 +560,7 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                             else:
                                 st.error("❌ Failed to send email. Check your SendGrid settings.")
 
-                    # Download
+                    # Excel download
                     st.markdown("---")
                     excel_data = generate_excel(result, url)
                     st.download_button(
@@ -580,7 +577,7 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     print(f"Error: {e}")
                     st.error("Something went wrong. Please check the URL and try again.")
 
-# History
+# ── History ───────────────────────────────────────────────────────────────────
 st.markdown("---")
 col1, col2 = st.columns([3, 1])
 with col1:
@@ -600,20 +597,20 @@ with col2:
                 rows = []
                 for entry in history:
                     rows.append({
-                        "Timestamp": entry.get("timestamp", ""),
-                        "Tweet URL": entry.get("url", ""),
-                        "Username": entry.get("username", ""),
-                        "Verdict": entry.get("verdict", ""),
-                        "Organic Score": entry.get("organic_score", ""),
-                        "Followers": entry.get("followers", ""),
-                        "Likes": entry.get("likes", ""),
-                        "Retweets": entry.get("retweets", ""),
-                        "Replies": entry.get("replies", ""),
-                        "Impressions": entry.get("impressions", ""),
-                        "Tweet Text": entry.get("tweet_text", ""),
-                        "Tweet Analysis": entry.get("tweet_analysis", ""),
+                        "Timestamp":        entry.get("timestamp", ""),
+                        "Tweet URL":        entry.get("url", ""),
+                        "Username":         entry.get("username", ""),
+                        "Verdict":          entry.get("verdict", ""),
+                        "Organic Score":    entry.get("organic_score", ""),
+                        "Followers":        entry.get("followers", ""),
+                        "Likes":            entry.get("likes", ""),
+                        "Retweets":         entry.get("retweets", ""),
+                        "Replies":          entry.get("replies", ""),
+                        "Impressions":      entry.get("impressions", ""),
+                        "Tweet Text":       entry.get("tweet_text", ""),
+                        "Tweet Analysis":   entry.get("tweet_analysis", ""),
                         "Profile Analysis": entry.get("profile_analysis", ""),
-                        "Red Flags": ", ".join(entry.get("red_flags", [])),
+                        "Red Flags":        ", ".join(entry.get("red_flags", [])),
                     })
                 pd.DataFrame(rows).to_excel(writer, sheet_name="Full History", index=False)
             return output.getvalue()
@@ -642,8 +639,8 @@ else:
                 st.rerun()
             c1, c2, c3 = st.columns(3)
             c1.metric(t["organic_score"], f"{entry['organic_score']}/100")
-            c2.metric(t["followers"], f"{entry['followers']:,}")
-            c3.metric(t["likes"], f"{entry['likes']:,}")
+            c2.metric(t["followers"],     f"{entry['followers']:,}")
+            c3.metric(t["likes"],         f"{entry['likes']:,}")
             st.markdown(f'<div class="section-title" style="margin-top:12px;">{t["tweet_analysis"]}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="analysis-box">{entry["tweet_analysis"]}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="section-title">{t["profile_analysis"]}</div>', unsafe_allow_html=True)
@@ -654,12 +651,12 @@ else:
                     st.markdown(f'<div class="red-flag-box">🚩 {flag}</div>', unsafe_allow_html=True)
             st.markdown(f"[{t['view_tweet']}]({entry['url']})")
 
-# Feedback section
+# ── Feedback ──────────────────────────────────────────────────────────────────
 st.markdown("---")
 with st.expander("💬 Feedback / Contact Developer"):
     from feedback import save_feedback
     feedback_category = st.selectbox("Category", ["General", "Bug Report", "Feature Request", "Other"])
-    feedback_message = st.text_area("Your message", placeholder="Tell us what you think or report an issue...")
+    feedback_message  = st.text_area("Your message", placeholder="Tell us what you think or report an issue...")
     if st.button("Send Feedback", key="send_feedback_btn"):
         if feedback_message.strip():
             save_feedback(email, name, feedback_message, feedback_category)
