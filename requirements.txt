@@ -6,6 +6,5 @@ plotly
 pandas
 openpyxl
 sendgrid
-stripe
-flask
 httpx
+requests
