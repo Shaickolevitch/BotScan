@@ -90,7 +90,7 @@ def create_plan(name: str, price_usd: str) -> str:
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
     """
     Creates a PayPal subscription and returns the approval URL.
-    Drop-in replacement for Stripe's create_checkout_session.
+    
     """
     payload = {
         "plan_id": price_id,
