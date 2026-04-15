@@ -173,8 +173,7 @@ st.write("BotScan is live 🚀")
 handle_google_callback()
 
 if not is_logged_in():
-    st.markdown("## 🚀 BotScan NEW VERSION LIVE")
-    st.markdown("If you see this — deploy works ✅")
+    
 
     render_login_page()
     st.stop()
