@@ -3,7 +3,7 @@ import urllib.parse
 import httpx
 import streamlit as st
 from dotenv import load_dotenv
-import json
+from session_manager import create_session, get_session, delete_session
 
 load_dotenv()
 
@@ -43,44 +43,18 @@ def get_user_info(access_token: str) -> dict:
     )
     return response.json()
 
-def save_session_to_browser(user: dict):
-    """Save user session to browser localStorage via JS"""
-    user_json = json.dumps(user).replace("'", "\\'")
-    st.components.v1.html(f"""
-        <script>
-            localStorage.setItem('botscan_user', '{user_json}');
-        </script>
-    """, height=0)
-
-def load_session_from_browser():
-    """Load user session from browser localStorage"""
-    st.components.v1.html("""
-        <script>
-            const user = localStorage.getItem('botscan_user');
-            if (user) {
-                const params = new URLSearchParams(window.location.search);
-                if (!params.has('session')) {
-                    window.location.href = window.location.pathname + '?session=' + encodeURIComponent(user);
-                }
-            }
-        </script>
-    """, height=0)
-
 def handle_google_callback():
-    """Check if Google sent a code back and exchange it for user info"""
-
-    # Check for session in query params (from localStorage)
+    # Try to restore session from token in query params
     params = st.query_params
-    if "session" in params and "user" not in st.session_state:
-        try:
-            user = json.loads(urllib.parse.unquote(params["session"]))
-            if user.get("email"):
-                st.session_state["user"] = user
-                st.query_params.clear()
-                st.rerun()
-        except:
-            pass
 
+    if "token" in params and "user" not in st.session_state:
+        token = params["token"]
+        user = get_session(token)
+        if user:
+            st.session_state["user"] = user
+            st.session_state["token"] = token
+
+    # Handle Google OAuth callback
     if "code" in params:
         code = params["code"]
         token_data = exchange_code_for_token(code)
@@ -92,8 +66,10 @@ def handle_google_callback():
                 "picture": user_info.get("picture"),
             }
             st.session_state["user"] = user
-            save_session_to_browser(user)
+            token = create_session(user)
+            st.session_state["token"] = token
             st.query_params.clear()
+            st.query_params["token"] = token
             st.rerun()
 
 def is_logged_in() -> bool:
@@ -103,19 +79,17 @@ def get_current_user() -> dict:
     return st.session_state.get("user", {})
 
 def logout():
+    token = st.session_state.get("token")
+    if token:
+        delete_session(token)
     if "user" in st.session_state:
         del st.session_state["user"]
-    st.components.v1.html("""
-        <script>
-            localStorage.removeItem('botscan_user');
-            window.location.href = '/';
-        </script>
-    """, height=0)
+    if "token" in st.session_state:
+        del st.session_state["token"]
+    st.query_params.clear()
+    st.rerun()
 
 def render_login_page():
-    # Try to restore session from localStorage
-    load_session_from_browser()
-
     st.markdown("""
         <div style="text-align: center; padding: 4rem 0 2rem;">
             <div style="font-size: 48px;">🔍</div>
