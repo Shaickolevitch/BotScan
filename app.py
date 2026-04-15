@@ -11,27 +11,82 @@ from billing import can_analyze, increment_usage, get_usage_display, create_chec
 from emailer import send_analysis_email
 
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
-# Handle policy pages
+# Handle policy pages BEFORE login check
 path = st.query_params.get("page", "")
-if path == "terms":
+
+def render_policy_nav():
     st.markdown("""
-    # Terms of Service
-    Last updated: April 15, 2026
-    
-    ## 1. Acceptance of Terms
-    By using BotScan you agree to these terms.
-    
-    ## 2. Description of Service
-    BotScan analyzes social media posts to detect fake engagement using AI.
-    
-    ## 3. Subscription Plans
-    Free, Basic ($9/month), and Pro ($29/month) plans available.
-    
-    ## 4. Refunds
-    Full refunds within 7 days. Contact shaigian1@gmail.com.
-    
-    ## 5. Contact
-    shaigian1@gmail.com
+        <div style="background:#0f1117; border-bottom:1px solid #2a2d3a; padding:16px 32px; display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem;">
+            <a href="/" target="_self" style="font-size:18px; font-weight:700; color:#f9fafb; text-decoration:none;">🔍 BotScan</a>
+            <div style="display:flex; gap:20px;">
+                <a href="/?page=terms" target="_self" style="font-size:14px; color:#9ca3af; text-decoration:none;">Terms</a>
+                <a href="/?page=privacy" target="_self" style="font-size:14px; color:#9ca3af; text-decoration:none;">Privacy</a>
+                <a href="/?page=refund" target="_self" style="font-size:14px; color:#9ca3af; text-decoration:none;">Refund Policy</a>
+                <a href="/" target="_self" style="background:#534AB7; color:#fff; padding:6px 16px; border-radius:8px; font-size:14px; font-weight:600; text-decoration:none;">Sign in</a>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+if path == "terms":
+    render_policy_nav()
+    st.markdown("""
+## Terms of Service
+Last updated: April 15, 2026
+
+### 1. Acceptance of Terms
+By using BotScan you agree to these terms.
+
+### 2. Description of Service
+BotScan analyzes social media posts to detect fake engagement using AI.
+
+### 3. Subscription Plans
+Free, Basic ($9/month), and Pro ($29/month) plans available.
+
+### 4. Refunds
+Full refunds within 7 days. Contact shaigian1@gmail.com.
+
+### 5. Contact
+shaigian1@gmail.com
+    """)
+    st.stop()
+
+if path == "privacy":
+    render_policy_nav()
+    st.markdown("""
+## Privacy Policy
+Last updated: April 15, 2026
+
+### 1. Information We Collect
+Email and name via Google login. Analysis history.
+
+### 2. How We Use It
+To provide BotScan service and send reports.
+
+### 3. Data Storage
+Stored securely. Never sold to third parties.
+
+### 4. Contact
+shaigian1@gmail.com
+    """)
+    st.stop()
+
+if path == "refund":
+    render_policy_nav()
+    st.markdown("""
+## Refund Policy
+Last updated: April 15, 2026
+
+### Our Guarantee
+Full refund within 7 days of purchase.
+
+### How to Request
+Email shaigian1@gmail.com with your account email.
+
+### Cancellations
+Cancel anytime, keep access until end of billing period.
+
+### Contact
+shaigian1@gmail.com
     """)
     st.stop()
 
