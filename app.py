@@ -11,7 +11,67 @@ from billing import can_analyze, increment_usage, get_usage_display, create_chec
 from emailer import send_analysis_email
 
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
+# Handle policy pages
+path = st.query_params.get("page", "")
+if path == "terms":
+    st.markdown("""
+    # Terms of Service
+    Last updated: April 15, 2026
+    
+    ## 1. Acceptance of Terms
+    By using BotScan you agree to these terms.
+    
+    ## 2. Description of Service
+    BotScan analyzes social media posts to detect fake engagement using AI.
+    
+    ## 3. Subscription Plans
+    Free, Basic ($9/month), and Pro ($29/month) plans available.
+    
+    ## 4. Refunds
+    Full refunds within 7 days. Contact shaigian1@gmail.com.
+    
+    ## 5. Contact
+    shaigian1@gmail.com
+    """)
+    st.stop()
 
+if path == "privacy":
+    st.markdown("""
+    # Privacy Policy
+    Last updated: April 15, 2026
+    
+    ## 1. Information We Collect
+    Email and name via Google login. Analysis history.
+    
+    ## 2. How We Use It
+    To provide BotScan service and send reports.
+    
+    ## 3. Data Storage
+    Stored securely. Never sold to third parties.
+    
+    ## 4. Contact
+    shaigian1@gmail.com
+    """)
+    st.stop()
+
+if path == "refund":
+    st.markdown("""
+    # Refund Policy
+    Last updated: April 15, 2026
+    
+    ## Our Guarantee
+    Full refund within 7 days of purchase.
+    
+    ## How to Request
+    Email shaigian1@gmail.com with your account email.
+    
+    ## Cancellations
+    Cancel anytime, keep access until end of billing period.
+    
+    ## Contact
+    shaigian1@gmail.com
+    """)
+    st.stop()
 st.markdown("""
 <style>
     .stApp { background-color: #0f1117; }
