@@ -3,12 +3,16 @@ import urllib.parse
 import httpx
 import streamlit as st
 from dotenv import load_dotenv
+from streamlit_cookies_manager import EncryptedCookieManager
 
 load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI", "http://localhost:8501")
+COOKIE_PASSWORD = os.getenv("COOKIE_PASSWORD", "botscan-secret-key-32-chars-long!")
+
+cookies = EncryptedCookieManager(prefix="botscan_", password=COOKIE_PASSWORD)
 
 def get_google_auth_url():
     params = {
@@ -42,19 +46,44 @@ def get_user_info(access_token: str) -> dict:
     )
     return response.json()
 
+def init_cookies():
+    """Must be called at the top of every page"""
+    if not cookies.ready():
+        st.stop()
+
 def handle_google_callback():
     """Check if Google sent a code back and exchange it for user info"""
+    init_cookies()
+
+    # Restore session from cookie if not in session state
+    if "user" not in st.session_state:
+        cookie_email = cookies.get("email")
+        cookie_name = cookies.get("name")
+        cookie_picture = cookies.get("picture")
+        if cookie_email:
+            st.session_state["user"] = {
+                "email": cookie_email,
+                "name": cookie_name,
+                "picture": cookie_picture,
+            }
+
     params = st.query_params
     if "code" in params:
         code = params["code"]
         token_data = exchange_code_for_token(code)
         if "access_token" in token_data:
             user_info = get_user_info(token_data["access_token"])
-            st.session_state["user"] = {
+            user = {
                 "email": user_info.get("email"),
                 "name": user_info.get("name"),
                 "picture": user_info.get("picture"),
             }
+            st.session_state["user"] = user
+            # Save to cookie
+            cookies["email"] = user["email"]
+            cookies["name"] = user["name"]
+            cookies["picture"] = user["picture"] or ""
+            cookies.save()
             st.query_params.clear()
             st.rerun()
 
@@ -67,6 +96,10 @@ def get_current_user() -> dict:
 def logout():
     if "user" in st.session_state:
         del st.session_state["user"]
+    cookies["email"] = ""
+    cookies["name"] = ""
+    cookies["picture"] = ""
+    cookies.save()
     st.rerun()
 
 def render_login_page():
