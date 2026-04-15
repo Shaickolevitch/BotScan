@@ -49,7 +49,7 @@ BotScan analyzes social media posts to detect fake engagement using AI.
 Free, Basic ($9/month), and Pro ($29/month) plans available.
 
 ### 4. Refunds
-Full refunds within 7 days. Contact shaigian1@gmail.com.
+No refunds, can cancel subscription anytime.
 
 ### 5. Contact
 shaigian1@gmail.com
