@@ -42,45 +42,43 @@ def render_admin_page():
 
     if not users:
         st.info("No users have signed in yet.")
-        return
+    else:
+        total_analyses = sum(u["total_analyses"] for u in users)
+        col1, col2 = st.columns(2)
+        col1.metric("Total Users", len(users))
+        col2.metric("Total Analyses", total_analyses)
 
-    # Summary stats
-    total_analyses = sum(u["total_analyses"] for u in users)
-    col1, col2 = st.columns(2)
-    col1.metric("Total Users", len(users))
-    col2.metric("Total Analyses", total_analyses)
+        st.markdown("---")
 
-    st.markdown("---")
+        for user in users:
+            verdict_counts = {}
+            for entry in user["history"]:
+                v = entry.get("verdict", "Unknown")
+                verdict_counts[v] = verdict_counts.get(v, 0) + 1
 
-    # Per user breakdown
-    for user in users:
-        verdict_counts = {}
-        for entry in user["history"]:
-            v = entry.get("verdict", "Unknown")
-            verdict_counts[v] = verdict_counts.get(v, 0) + 1
+            with st.expander(f"👤 {user['email']} — {user['total_analyses']} analyses"):
+                c1, c2, c3 = st.columns(3)
+                c1.metric("Organic", verdict_counts.get("Organic", 0))
+                c2.metric("Suspicious", verdict_counts.get("Suspicious", 0))
+                c3.metric("Fake", verdict_counts.get("Fake", 0))
 
-        with st.expander(f"👤 {user['email']} — {user['total_analyses']} analyses"):
-            c1, c2, c3 = st.columns(3)
-            c1.metric("Organic", verdict_counts.get("Organic", 0))
-            c2.metric("Suspicious", verdict_counts.get("Suspicious", 0))
-            c3.metric("Fake", verdict_counts.get("Fake", 0))
+                st.markdown("**Recent analyses:**")
+                for entry in user["history"][:5]:
+                    verdict = entry.get("verdict", "")
+                    icon = "🟢" if verdict == "Organic" else "🟡" if verdict == "Suspicious" else "🔴"
+                    st.markdown(f"""
+                        <div style="background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 8px;
+                                    padding: 10px 14px; margin-bottom: 8px; font-size: 13px; color: #e5e7eb;">
+                            {icon} <b>@{entry.get('username', '')}</b> — {verdict}
+                            ({entry.get('organic_score', 0)}/100) · {entry.get('timestamp', '')}
+                        </div>
+                    """, unsafe_allow_html=True)
 
-            st.markdown("**Recent analyses:**")
-            for entry in user["history"][:5]:
-                verdict = entry.get("verdict", "")
-                icon = "🟢" if verdict == "Organic" else "🟡" if verdict == "Suspicious" else "🔴"
-                st.markdown(f"""
-                    <div style="background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 8px;
-                                padding: 10px 14px; margin-bottom: 8px; font-size: 13px; color: #e5e7eb;">
-                        {icon} <b>@{entry.get('username', '')}</b> — {verdict}
-                        ({entry.get('organic_score', 0)}/100) · {entry.get('timestamp', '')}
-                    </div>
-                """, unsafe_allow_html=True)
-                # Feedback section
+    # Feedback section - always shown
     from feedback import load_feedback
     st.markdown("---")
     st.markdown("""<div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:1rem;">💬 User Feedback</div>""", unsafe_allow_html=True)
-    
+
     feedbacks = load_feedback()
     if not feedbacks:
         st.info("No feedback yet.")
