@@ -654,6 +654,19 @@ else:
                     st.markdown(f'<div class="red-flag-box">🚩 {flag}</div>', unsafe_allow_html=True)
             st.markdown(f"[{t['view_tweet']}]({entry['url']})")
 
+# Feedback section
+st.markdown("---")
+with st.expander("💬 Feedback / Contact Developer"):
+    from feedback import save_feedback
+    feedback_category = st.selectbox("Category", ["General", "Bug Report", "Feature Request", "Other"])
+    feedback_message = st.text_area("Your message", placeholder="Tell us what you think or report an issue...")
+    if st.button("Send Feedback", key="send_feedback_btn"):
+        if feedback_message.strip():
+            save_feedback(email, name, feedback_message, feedback_category)
+            st.success("✅ Thank you! Your feedback has been sent.")
+        else:
+            st.warning("Please write a message before sending.")
+
 st.markdown("""
     <div style="text-align: center; padding: 2rem 0 1rem;">
         <p style="color: #4b5563; font-size: 12px;">© 2026 Shai Gian. All rights reserved.</p>

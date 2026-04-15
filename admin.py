@@ -76,3 +76,26 @@ def render_admin_page():
                         ({entry.get('organic_score', 0)}/100) · {entry.get('timestamp', '')}
                     </div>
                 """, unsafe_allow_html=True)
+                # Feedback section
+    from feedback import load_feedback
+    st.markdown("---")
+    st.markdown("""<div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:1rem;">💬 User Feedback</div>""", unsafe_allow_html=True)
+    
+    feedbacks = load_feedback()
+    if not feedbacks:
+        st.info("No feedback yet.")
+    else:
+        for fb in feedbacks:
+            category_color = "#534AB7" if fb['category'] == "General" else "#ef4444" if fb['category'] == "Bug Report" else "#10b981" if fb['category'] == "Feature Request" else "#6b7280"
+            st.markdown(f"""
+                <div style="background:#1a1d27; border:1px solid #2a2d3a; border-radius:10px; padding:14px 18px; margin-bottom:10px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="color:#f9fafb; font-weight:600;">{fb['name']} <span style="color:#6b7280; font-weight:400;">({fb['email']})</span></span>
+                        <span style="color:#6b7280; font-size:12px;">{fb['timestamp']}</span>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        <span style="background:{category_color}22; color:{category_color}; font-size:11px; padding:2px 8px; border-radius:20px; border:1px solid {category_color}44;">{fb['category']}</span>
+                    </div>
+                    <div style="color:#e5e7eb; font-size:14px; line-height:1.6;">{fb['message']}</div>
+                </div>
+            """, unsafe_allow_html=True)
