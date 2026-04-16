@@ -35,6 +35,7 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
         "items": [{"price_id": price_id, "quantity": 1}],
         "customer": {"email": email},
         "collection_mode": "automatic",
+        "checkout": {"url": success_url},
     }
     resp = requests.post(
         f"{PADDLE_BASE_URL}/transactions",

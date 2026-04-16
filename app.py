@@ -257,8 +257,9 @@ if st.session_state.get("page") == "pricing":
 
     # Build return URLs dynamically
     app_url = os.getenv("APP_URL", "http://localhost:8501")
-    success_url = f"{app_url}/?paddle=success"
-    cancel_url  = f"{app_url}/?paddle=cancel"
+    token = st.session_state.get("token", "")
+    success_url = f"{app_url}/?paddle=success&token={token}"
+    cancel_url  = f"{app_url}/?token={token}"
 
     st.markdown("""
         <div style="text-align: center; padding: 1rem 0 2rem;">
