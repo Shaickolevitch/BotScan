@@ -23,6 +23,25 @@ from emailer import send_analysis_email
 
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
 
+PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
+st.markdown(f"""
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+    <script>
+        window.addEventListener('load', function() {{
+            Paddle.Initialize({{ token: '{PADDLE_CLIENT_TOKEN}' }});
+        }});
+    </script>
+""", unsafe_allow_html=True)
+
+# Inject Paddle.js
+PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
+st.markdown(f"""
+    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+    <script>
+        Paddle.Initialize({{ token: '{PADDLE_CLIENT_TOKEN}' }});
+    </script>
+""", unsafe_allow_html=True)
+
 # ── Policy pages (before login) ───────────────────────────────────────────────
 path = st.query_params.get("page", "")
 
@@ -279,7 +298,7 @@ if st.session_state.get("page") == "pricing":
                 <div style="background: #534AB7; color: #fff; font-size: 11px; padding: 3px 10px;
                              border-radius: 20px; display: inline-block; margin-bottom: 8px;">POPULAR</div>
                 <div style="font-size: 20px; font-weight: 700; color: #f9fafb; margin-bottom: 8px;">Basic</div>
-                <div style="font-size: 36px; font-weight: 800; color: #f9fafb;">$9</div>
+                <div style="font-size: 36px; font-weight: 800; color: #f9fafb;">$6</div>
                 <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">per month</div>
                 <hr style="border-color: #2a2d3a;" />
                 <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ 50 analyses / month</div>
