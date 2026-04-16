@@ -312,7 +312,11 @@ if st.session_state.get("page") == "pricing":
                     success_url=success_url,
                     cancel_url=cancel_url,
                 )
-                st.markdown(f'<a href="{txn}" target="_blank" id="paddle_link"></a><script>document.getElementById("paddle_link").click();</script>', unsafe_allow_html=True)
+                st.session_state["checkout_url"] = txn
+                st.session_state["checkout_plan"] = "basic"
+
+            if st.session_state.get("checkout_url") and st.session_state.get("checkout_plan") == "basic":
+                st.link_button("🔗 Click here to complete payment", st.session_state["checkout_url"])
 
     with col3:
         st.markdown("""
@@ -337,8 +341,11 @@ if st.session_state.get("page") == "pricing":
                     success_url=success_url,
                     cancel_url=cancel_url,
                 )
-                st.markdown(f'<a href="{txn}" target="_blank" id="paddle_link_pro"></a><script>document.getElementById("paddle_link_pro").click();</script>', unsafe_allow_html=True)
+                st.session_state["checkout_url"] = txn
+                st.session_state["checkout_plan"] = "pro"
 
+            if st.session_state.get("checkout_url") and st.session_state.get("checkout_plan") == "pro":
+                st.link_button("🔗 Click here to complete payment", st.session_state["checkout_url"])
     
 
     st.stop()
