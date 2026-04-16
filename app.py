@@ -19,28 +19,22 @@ from billing import (
     create_checkout_session, activate_plan, get_plan,
     BASIC_PRICE_ID, PRO_PRICE_ID
 )
-from emailer import send_analysis_email
-
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
-
 PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
 st.markdown(f"""
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
     <script>
         window.addEventListener('load', function() {{
             Paddle.Initialize({{ token: '{PADDLE_CLIENT_TOKEN}' }});
+            const urlParams = new URLSearchParams(window.location.search);
+            const txn = urlParams.get('_ptxn');
+            if (txn) {{
+                Paddle.Checkout.open({{ transactionId: txn }});
+            }}
         }});
     </script>
 """, unsafe_allow_html=True)
 
-# Inject Paddle.js
-PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
-st.markdown(f"""
-    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-    <script>
-        Paddle.Initialize({{ token: '{PADDLE_CLIENT_TOKEN}' }});
-    </script>
-""", unsafe_allow_html=True)
 
 # ── Policy pages (before login) ───────────────────────────────────────────────
 path = st.query_params.get("page", "")
