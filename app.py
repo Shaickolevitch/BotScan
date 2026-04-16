@@ -1,14 +1,8 @@
 import os
-def fmt(n):
-            if n >= 1_000_000:
-                return f"{n/1_000_000:.1f}M"
-            if n >= 1_000:
-                return f"{n/1_000:.1f}K"
-            return str(n)
+import io
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import io
 from analyzer import analyze_tweet
 from history import save_to_history, load_history
 from translations import TRANSLATIONS
@@ -19,7 +13,12 @@ from billing import (
     create_checkout_session, activate_plan, get_plan,
     BASIC_PRICE_ID, PRO_PRICE_ID
 )
+from emailer import send_analysis_email
+
+# ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
+
+# ── Paddle.js ─────────────────────────────────────────────────────────────────
 PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
 st.markdown(f"""
     <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
@@ -35,6 +34,13 @@ st.markdown(f"""
     </script>
 """, unsafe_allow_html=True)
 
+# ── Number formatter ──────────────────────────────────────────────────────────
+def fmt(n):
+    if n >= 1_000_000:
+        return f"{n/1_000_000:.1f}M"
+    if n >= 1_000:
+        return f"{n/1_000:.1f}K"
+    return str(n)
 
 # ── Policy pages (before login) ───────────────────────────────────────────────
 path = st.query_params.get("page", "")
@@ -65,7 +71,7 @@ By using BotScan you agree to these terms.
 BotScan analyzes social media posts to detect fake engagement using AI.
 
 ### 3. Subscription Plans
-Free, Basic ($9/month), and Pro ($29/month) plans available.
+Free, Basic ($6/month), and Pro ($29/month) plans available.
 
 ### 4. Refunds
 No refunds, can cancel subscription anytime.
@@ -171,9 +177,7 @@ st.markdown("""
         text-align: center;
         height: 100%;
     }
-    .plan-card.highlighted {
-        border: 2px solid #534AB7;
-    }
+    .plan-card.highlighted { border: 2px solid #534AB7; }
     div[data-testid="stRadio"] label { color: #e5e7eb; font-size: 14px; }
     h1, h2, h3 { color: #f9fafb !important; }
     p, label, .stCaption { color: #e5e7eb !important; }
@@ -185,22 +189,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-
 # ── Auth ──────────────────────────────────────────────────────────────────────
 handle_google_callback()
 
 if not is_logged_in():
-    
-
     render_login_page()
     st.stop()
 
 user = get_current_user()
 email = user["email"]
-name  = user["name"]
+name = user["name"]
 picture = user.get("picture", "")
 
+# ── Paddle return handling ────────────────────────────────────────────────────
 params = st.query_params
 if params.get("paddle") == "success":
     activate_plan(email, params.get("plan", "basic"))
@@ -208,7 +209,7 @@ if params.get("paddle") == "success":
     st.success("🎉 Welcome to your new plan!")
     st.rerun()
 
-if params.get("paypal") == "cancel":
+if params.get("paddle") == "cancel":
     st.info("Subscription cancelled. You can try again from the Plans page.")
     st.query_params.clear()
 
@@ -219,11 +220,11 @@ plan_color = "#10b981" if usage["plan"] == "Pro" else "#534AB7" if usage["plan"]
 col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
 with col1:
     st.markdown(f"""
-        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0;">
-            <img src="{picture}" style="width: 32px; height: 32px; border-radius: 50%;" />
-            <span style="color: #e5e7eb; font-size: 14px;">👋 {name}</span>
-            <span style="background: {plan_color}22; color: {plan_color}; font-size: 11px;
-                         padding: 2px 8px; border-radius: 20px; border: 1px solid {plan_color}44;">
+        <div style="display:flex; align-items:center; gap:10px; padding:6px 0;">
+            <img src="{picture}" style="width:32px; height:32px; border-radius:50%;" />
+            <span style="color:#e5e7eb; font-size:14px;">👋 {name}</span>
+            <span style="background:{plan_color}22; color:{plan_color}; font-size:11px;
+                         padding:2px 8px; border-radius:20px; border:1px solid {plan_color}44;">
                 {usage["plan"]}
             </span>
         </div>
@@ -255,16 +256,15 @@ if st.session_state.get("page") == "pricing":
         st.session_state["page"] = "main"
         st.rerun()
 
-    # Build return URLs dynamically
     app_url = os.getenv("APP_URL", "http://localhost:8501").rstrip("/")
     token = st.session_state.get("token", "")
     success_url = f"{app_url}/?paddle=success&token={token}"
-    cancel_url  = f"{app_url}/?token={token}"
+    cancel_url = f"{app_url}/?token={token}"
 
     st.markdown("""
-        <div style="text-align: center; padding: 1rem 0 2rem;">
-            <h2 style="font-size: 28px; font-weight: 700;">Choose your plan</h2>
-            <p style="color: #9ca3af;">Upgrade to analyze more tweets</p>
+        <div style="text-align:center; padding:1rem 0 2rem;">
+            <h2 style="font-size:28px; font-weight:700;">Choose your plan</h2>
+            <p style="color:#9ca3af;">Upgrade to analyze more tweets</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -274,14 +274,14 @@ if st.session_state.get("page") == "pricing":
     with col1:
         st.markdown("""
             <div class="plan-card">
-                <div style="font-size: 20px; font-weight: 700; color: #f9fafb; margin-bottom: 8px;">Free</div>
-                <div style="font-size: 36px; font-weight: 800; color: #f9fafb;">$0</div>
-                <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">forever</div>
-                <hr style="border-color: #2a2d3a;" />
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ 5 analyses / day</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Full report</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ History log</div>
-                <div style="color: #6b7280; font-size: 14px; margin: 12px 0;">❌ Excel export</div>
+                <div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:8px;">Free</div>
+                <div style="font-size:36px; font-weight:800; color:#f9fafb;">$0</div>
+                <div style="color:#6b7280; font-size:13px; margin-bottom:16px;">forever</div>
+                <hr style="border-color:#2a2d3a;" />
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ 5 analyses / day</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Full report</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ History log</div>
+                <div style="color:#6b7280; font-size:14px; margin:12px 0;">❌ Excel export</div>
             </div>
         """, unsafe_allow_html=True)
         if current_plan == "free":
@@ -290,16 +290,16 @@ if st.session_state.get("page") == "pricing":
     with col2:
         st.markdown("""
             <div class="plan-card highlighted">
-                <div style="background: #534AB7; color: #fff; font-size: 11px; padding: 3px 10px;
-                             border-radius: 20px; display: inline-block; margin-bottom: 8px;">POPULAR</div>
-                <div style="font-size: 20px; font-weight: 700; color: #f9fafb; margin-bottom: 8px;">Basic</div>
-                <div style="font-size: 36px; font-weight: 800; color: #f9fafb;">$6</div>
-                <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">per month</div>
-                <hr style="border-color: #2a2d3a;" />
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ 50 analyses / month</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Full report</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ History log</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Excel export</div>
+                <div style="background:#534AB7; color:#fff; font-size:11px; padding:3px 10px;
+                             border-radius:20px; display:inline-block; margin-bottom:8px;">POPULAR</div>
+                <div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:8px;">Basic</div>
+                <div style="font-size:36px; font-weight:800; color:#f9fafb;">$6</div>
+                <div style="color:#6b7280; font-size:13px; margin-bottom:16px;">per month</div>
+                <hr style="border-color:#2a2d3a;" />
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ 50 analyses / month</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Full report</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ History log</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Excel export</div>
             </div>
         """, unsafe_allow_html=True)
         if current_plan == "basic":
@@ -311,67 +311,69 @@ if st.session_state.get("page") == "pricing":
                     price_id=BASIC_PRICE_ID,
                     success_url=success_url,
                     cancel_url=cancel_url,
-                    )
-                        txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
-                            st.markdown(f"""
-                            <script>
-                                Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
-                            </script>
-                        """, unsafe_allow_html=True)
+                )
+                txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
+                st.markdown(f"""
+                    <script>
+                        Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
+                    </script>
+                """, unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
             <div class="plan-card">
-                <div style="font-size: 20px; font-weight: 700; color: #f9fafb; margin-bottom: 8px;">Pro</div>
-                <div style="font-size: 36px; font-weight: 800; color: #10b981;">$29</div>
-                <div style="color: #6b7280; font-size: 13px; margin-bottom: 16px;">per month</div>
-                <hr style="border-color: #2a2d3a;" />
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Unlimited analyses</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Full report</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ History log</div>
-                <div style="color: #e5e7eb; font-size: 14px; margin: 12px 0;">✅ Excel export</div>
+                <div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:8px;">Pro</div>
+                <div style="font-size:36px; font-weight:800; color:#10b981;">$29</div>
+                <div style="color:#6b7280; font-size:13px; margin-bottom:16px;">per month</div>
+                <hr style="border-color:#2a2d3a;" />
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Unlimited analyses</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Full report</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ History log</div>
+                <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Excel export</div>
             </div>
         """, unsafe_allow_html=True)
         if current_plan == "pro":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#10b981; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Pro →", use_container_width=True, key="pro_btn"):
-                with st.spinner("Redirecting to paddle..."):
-                    checkout_url = create_checkout_session(
-                        email=email,
-                        price_id=PRO_PRICE_ID,
-                        success_url=success_url,
-                        cancel_url=cancel_url,
-                    )
-                st.markdown(f'<meta http-equiv="refresh" content="0; url={checkout_url}">', unsafe_allow_html=True)
+                txn = create_checkout_session(
+                    email=email,
+                    price_id=PRO_PRICE_ID,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
+                )
+                txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
+                st.markdown(f"""
+                    <script>
+                        Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
+                    </script>
+                """, unsafe_allow_html=True)
 
     st.stop()
 
 # ── Main app ──────────────────────────────────────────────────────────────────
-import os
-
 st.markdown("""
-    <div style="text-align: center; padding: 1rem 0 0.5rem;">
-        <div style="font-size: 40px;">🔍</div>
-        <h1 style="font-size: 28px; font-weight: 700; margin: 0.25rem 0;">BotScan</h1>
-        <p style="color: #6b7280; font-size: 13px; margin: 0;">by Shai Gian</p>
+    <div style="text-align:center; padding:1rem 0 0.5rem;">
+        <div style="font-size:40px;">🔍</div>
+        <h1 style="font-size:28px; font-weight:700; margin:0.25rem 0;">BotScan</h1>
+        <p style="color:#6b7280; font-size:13px; margin:0;">by Shai Gian</p>
     </div>
 """, unsafe_allow_html=True)
 
 remaining = usage["remaining"]
 limit = usage["limit"]
-used  = usage["used"]
+used = usage["used"]
 if usage["plan"] != "Pro":
     used_pct = int((used / limit) * 100) if limit else 0
     bar_color = "#10b981" if used_pct < 70 else "#f59e0b" if used_pct < 90 else "#ef4444"
     st.markdown(f"""
-        <div style="margin-bottom: 1rem;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                <span style="font-size: 12px; color: #6b7280;">Analyses used</span>
-                <span style="font-size: 12px; color: #9ca3af;">{used}/{limit}</span>
+        <div style="margin-bottom:1rem;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                <span style="font-size:12px; color:#6b7280;">Analyses used</span>
+                <span style="font-size:12px; color:#9ca3af;">{used}/{limit}</span>
             </div>
-            <div style="background: #2a2d3a; border-radius: 6px; height: 6px;">
-                <div style="width: {used_pct}%; background: {bar_color}; height: 6px; border-radius: 6px;"></div>
+            <div style="background:#2a2d3a; border-radius:6px; height:6px;">
+                <div style="width:{used_pct}%; background:{bar_color}; height:6px; border-radius:6px;"></div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -390,6 +392,7 @@ if language == "he":
 
 st.caption(t["caption"])
 
+# ── Gauge chart ───────────────────────────────────────────────────────────────
 def make_gauge(score):
     color = "#10b981" if score >= 70 else "#f59e0b" if score >= 40 else "#ef4444"
     fig = go.Figure(go.Indicator(
@@ -402,15 +405,11 @@ def make_gauge(score):
             "bgcolor": "#1a1d27",
             "bordercolor": "#2a2d3a",
             "steps": [
-                {"range": [0, 40],  "color": "#2a1a1a"},
+                {"range": [0, 40], "color": "#2a1a1a"},
                 {"range": [40, 70], "color": "#2a2410"},
-                {"range": [70, 100],"color": "#0d2a1f"},
+                {"range": [70, 100], "color": "#0d2a1f"},
             ],
-            "threshold": {
-                "line": {"color": color, "width": 3},
-                "thickness": 0.8,
-                "value": score
-            }
+            "threshold": {"line": {"color": color, "width": 3}, "thickness": 0.8, "value": score}
         }
     ))
     fig.update_layout(
@@ -421,29 +420,31 @@ def make_gauge(score):
     )
     return fig
 
+# ── Score breakdown ───────────────────────────────────────────────────────────
 def render_score_breakdown(breakdown: dict):
     labels = {
-        "account_age":      "👤 Account Age",
-        "follower_ratio":   "⚖️ Follower/Following Ratio",
+        "account_age": "👤 Account Age",
+        "follower_ratio": "⚖️ Follower/Following Ratio",
         "like_reply_ratio": "💬 Like/Reply Ratio",
-        "engagement_rate":  "📈 Engagement Rate",
+        "engagement_rate": "📈 Engagement Rate",
         "retweet_like_ratio": "🔁 Retweet/Like Ratio",
     }
     for key, label in labels.items():
         score = breakdown.get(key, 0)
         color = "#10b981" if score >= 70 else "#f59e0b" if score >= 40 else "#ef4444"
         st.markdown(f"""
-            <div style="margin-bottom: 14px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                    <span style="font-size: 13px; color: #e5e7eb;">{label}</span>
-                    <span style="font-size: 13px; font-weight: 600; color: {color};">{score}/100</span>
+            <div style="margin-bottom:14px;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span style="font-size:13px; color:#e5e7eb;">{label}</span>
+                    <span style="font-size:13px; font-weight:600; color:{color};">{score}/100</span>
                 </div>
                 <div class="breakdown-bar-bg">
-                    <div style="width: {score}%; background: {color}; height: 8px; border-radius: 6px;"></div>
+                    <div style="width:{score}%; background:{color}; height:8px; border-radius:6px;"></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
+# ── Excel export ──────────────────────────────────────────────────────────────
 def generate_excel(result, url):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -466,7 +467,7 @@ def generate_excel(result, url):
             bd_data = {
                 "Signal": ["Account Age", "Follower/Following Ratio", "Like/Reply Ratio",
                            "Engagement Rate", "Retweet/Like Ratio"],
-                "Score":  [
+                "Score": [
                     breakdown.get("account_age", 0),
                     breakdown.get("follower_ratio", 0),
                     breakdown.get("like_reply_ratio", 0),
@@ -510,12 +511,11 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                         verdict_icon = "🟢" if verdict == "Organic" else "🟡" if verdict == "Suspicious" else "🔴"
                         st.markdown(f'<div class="section-title">{t["verdict"]}</div>', unsafe_allow_html=True)
                         st.markdown(f"""
-                            <div class="analysis-box" style="margin-top: 12px;">
-                                <span class="{verdict_class}" style="font-size: 28px; font-weight: 700;">{verdict_icon} {verdict}</span>
+                            <div class="analysis-box" style="margin-top:12px;">
+                                <span class="{verdict_class}" style="font-size:28px; font-weight:700;">{verdict_icon} {verdict}</span>
                             </div>
                         """, unsafe_allow_html=True)
                         st.markdown(f'<div class="section-title" style="margin-top:16px;">@{result["username"]}</div>', unsafe_allow_html=True)
-                        
 
                     c1, c2, c3 = st.columns(3)
                     c1.metric(t["followers"], fmt(result['followers']))
@@ -532,10 +532,10 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     st.markdown("---")
                     st.markdown(f'<div class="section-title">{t["tweet_metrics"]}</div>', unsafe_allow_html=True)
                     c1, c2, c3, c4 = st.columns(4)
-                    c1.metric(t["likes"],       f"{result['likes']:,}")
-                    c2.metric(t["retweets"],    f"{result['retweets']:,}")
-                    c3.metric(t["replies"],     f"{result['replies']:,}")
-                    c4.metric(t["impressions"], f"{result['impressions']:,}")
+                    c1.metric(t["likes"], fmt(result['likes']))
+                    c2.metric(t["retweets"], fmt(result['retweets']))
+                    c3.metric(t["replies"], fmt(result['replies']))
+                    c4.metric(t["impressions"], fmt(result['impressions']))
 
                     st.markdown(f'<div class="tweet-quote">{result["tweet_text"]}</div>', unsafe_allow_html=True)
 
@@ -553,7 +553,6 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     else:
                         st.success(t["no_red_flags"])
 
-                    # Email report
                     st.markdown("---")
                     st.markdown('<div class="section-title">📧 Email Report</div>', unsafe_allow_html=True)
                     email_mode = st.radio(
@@ -571,7 +570,6 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                             else:
                                 st.error("❌ Failed to send email. Check your SendGrid settings.")
 
-                    # Excel download
                     st.markdown("---")
                     excel_data = generate_excel(result, url)
                     st.download_button(
@@ -608,20 +606,20 @@ with col2:
                 rows = []
                 for entry in history:
                     rows.append({
-                        "Timestamp":        entry.get("timestamp", ""),
-                        "Tweet URL":        entry.get("url", ""),
-                        "Username":         entry.get("username", ""),
-                        "Verdict":          entry.get("verdict", ""),
-                        "Organic Score":    entry.get("organic_score", ""),
-                        "Followers":        entry.get("followers", ""),
-                        "Likes":            entry.get("likes", ""),
-                        "Retweets":         entry.get("retweets", ""),
-                        "Replies":          entry.get("replies", ""),
-                        "Impressions":      entry.get("impressions", ""),
-                        "Tweet Text":       entry.get("tweet_text", ""),
-                        "Tweet Analysis":   entry.get("tweet_analysis", ""),
+                        "Timestamp": entry.get("timestamp", ""),
+                        "Tweet URL": entry.get("url", ""),
+                        "Username": entry.get("username", ""),
+                        "Verdict": entry.get("verdict", ""),
+                        "Organic Score": entry.get("organic_score", ""),
+                        "Followers": entry.get("followers", ""),
+                        "Likes": entry.get("likes", ""),
+                        "Retweets": entry.get("retweets", ""),
+                        "Replies": entry.get("replies", ""),
+                        "Impressions": entry.get("impressions", ""),
+                        "Tweet Text": entry.get("tweet_text", ""),
+                        "Tweet Analysis": entry.get("tweet_analysis", ""),
                         "Profile Analysis": entry.get("profile_analysis", ""),
-                        "Red Flags":        ", ".join(entry.get("red_flags", [])),
+                        "Red Flags": ", ".join(entry.get("red_flags", [])),
                     })
                 pd.DataFrame(rows).to_excel(writer, sheet_name="Full History", index=False)
             return output.getvalue()
@@ -650,8 +648,8 @@ else:
                 st.rerun()
             c1, c2, c3 = st.columns(3)
             c1.metric(t["organic_score"], f"{entry['organic_score']}/100")
-            c2.metric(t["followers"],     f"{entry['followers']:,}")
-            c3.metric(t["likes"],         f"{entry['likes']:,}")
+            c2.metric(t["followers"], fmt(entry['followers']))
+            c3.metric(t["likes"], fmt(entry['likes']))
             st.markdown(f'<div class="section-title" style="margin-top:12px;">{t["tweet_analysis"]}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="analysis-box">{entry["tweet_analysis"]}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="section-title">{t["profile_analysis"]}</div>', unsafe_allow_html=True)
@@ -667,7 +665,7 @@ st.markdown("---")
 with st.expander("💬 Feedback / Contact Developer"):
     from feedback import save_feedback
     feedback_category = st.selectbox("Category", ["General", "Bug Report", "Feature Request", "Other"])
-    feedback_message  = st.text_area("Your message", placeholder="Tell us what you think or report an issue...")
+    feedback_message = st.text_area("Your message", placeholder="Tell us what you think or report an issue...")
     if st.button("Send Feedback", key="send_feedback_btn"):
         if feedback_message.strip():
             save_feedback(email, name, feedback_message, feedback_category)
@@ -676,7 +674,7 @@ with st.expander("💬 Feedback / Contact Developer"):
             st.warning("Please write a message before sending.")
 
 st.markdown("""
-    <div style="text-align: center; padding: 2rem 0 1rem;">
-        <p style="color: #4b5563; font-size: 12px;">© 2026 Shai Gian. All rights reserved.</p>
+    <div style="text-align:center; padding:2rem 0 1rem;">
+        <p style="color:#4b5563; font-size:12px;">© 2026 Shai Gian. All rights reserved.</p>
     </div>
 """, unsafe_allow_html=True)
