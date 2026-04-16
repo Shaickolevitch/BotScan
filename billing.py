@@ -31,7 +31,6 @@ def _headers() -> dict:
 
 # ── Checkout ──────────────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    """Creates a Paddle checkout URL."""
     payload = {
         "items": [{"price_id": price_id, "quantity": 1}],
         "customer": {"email": email},
@@ -43,8 +42,9 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
         json=payload,
         headers=_headers(),
     )
-    print("Paddle response:", resp.status_code, resp.text)
-    resp.raise_for_status()
+    # Temporarily return error for debugging
+    if resp.status_code != 200:
+        raise ValueError(f"Paddle error {resp.status_code}: {resp.text}")
     data = resp.json()["data"]
     return data["checkout"]["url"]
 
