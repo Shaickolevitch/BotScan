@@ -339,15 +339,7 @@ if st.session_state.get("page") == "pricing":
                 )
                 st.markdown(f'<a href="{txn}" target="_blank" id="paddle_link_pro"></a><script>document.getElementById("paddle_link_pro").click();</script>', unsafe_allow_html=True)
 
-    if st.session_state.get("paddle_txn"):
-        txn_id = st.session_state.pop("paddle_txn")
-        st.markdown(f"""
-            <script>
-                setTimeout(function() {{
-                    Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
-                }}, 500);
-            </script>
-        """, unsafe_allow_html=True)
+    
 
     st.stop()
 
