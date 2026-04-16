@@ -258,7 +258,6 @@ if st.session_state.get("page") == "pricing":
 
     app_url = os.getenv("APP_URL", "http://localhost:8501").rstrip("/")
     token = st.session_state.get("token", "")
-    success_url = f"{app_url}/?paddle=success&token={token}"
     cancel_url = f"{app_url}/?token={token}"
 
     st.markdown("""
@@ -309,12 +308,11 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=BASIC_PRICE_ID,
-                    success_url=success_url,
+                    success_url=f"{app_url}/?paddle=success&plan=basic&token={token}",
                     cancel_url=cancel_url,
                 )
                 st.session_state["checkout_url"] = txn
                 st.session_state["checkout_plan"] = "basic"
-
             if st.session_state.get("checkout_url") and st.session_state.get("checkout_plan") == "basic":
                 st.link_button("🔗 Click here to complete payment", st.session_state["checkout_url"])
 
@@ -338,15 +336,13 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=PRO_PRICE_ID,
-                    success_url=success_url,
+                    success_url=f"{app_url}/?paddle=success&plan=pro&token={token}",
                     cancel_url=cancel_url,
                 )
                 st.session_state["checkout_url"] = txn
                 st.session_state["checkout_plan"] = "pro"
-
             if st.session_state.get("checkout_url") and st.session_state.get("checkout_plan") == "pro":
                 st.link_button("🔗 Click here to complete payment", st.session_state["checkout_url"])
-    
 
     st.stop()
 
