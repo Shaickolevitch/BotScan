@@ -312,7 +312,7 @@ if st.session_state.get("page") == "pricing":
                     success_url=success_url,
                     cancel_url=cancel_url,
                     )
-                            txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
+                        txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
                             st.markdown(f"""
                             <script>
                                 Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
