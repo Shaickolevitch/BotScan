@@ -313,11 +313,8 @@ if st.session_state.get("page") == "pricing":
                     cancel_url=cancel_url,
                 )
                 txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
-                st.markdown(f"""
-                    <script>
-                        Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
-                    </script>
-                """, unsafe_allow_html=True)
+                st.session_state["paddle_txn"] = txn_id
+                st.rerun()
 
     with col3:
         st.markdown("""
@@ -343,11 +340,18 @@ if st.session_state.get("page") == "pricing":
                     cancel_url=cancel_url,
                 )
                 txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
-                st.markdown(f"""
-                    <script>
-                        Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
-                    </script>
-                """, unsafe_allow_html=True)
+                st.session_state["paddle_txn"] = txn_id
+                st.rerun()
+
+    if st.session_state.get("paddle_txn"):
+        txn_id = st.session_state.pop("paddle_txn")
+        st.markdown(f"""
+            <script>
+                setTimeout(function() {{
+                    Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
+                }}, 500);
+            </script>
+        """, unsafe_allow_html=True)
 
     st.stop()
 
