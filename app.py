@@ -17,7 +17,6 @@ from admin import is_admin, render_admin_page
 from billing import (
     can_analyze, increment_usage, get_usage_display,
     create_checkout_session, activate_plan, get_plan,
-    get_pending_subscription, get_subscription_status,
     BASIC_PRICE_ID, PRO_PRICE_ID
 )
 from emailer import send_analysis_email
@@ -189,31 +188,12 @@ email = user["email"]
 name  = user["name"]
 picture = user.get("picture", "")
 
-# ── PayPal return handling (replaces Stripe session_id check) ─────────────────
 params = st.query_params
-
-if params.get("paypal") == "success":
-    pending = get_pending_subscription(email)
-    if pending:
-        sub_id  = pending["subscription_id"]
-        plan_id = pending["plan_id"]
-        try:
-            status = get_subscription_status(sub_id)
-            if status == "ACTIVE":
-                plan_name = "pro" if plan_id == PRO_PRICE_ID else "basic"
-                activate_plan(email, plan_name)
-                st.query_params.clear()
-                st.success(f"🎉 Welcome to BotScan {plan_name.capitalize()}!")
-                st.rerun()
-            else:
-                # Still APPROVAL_PENDING — ask user to wait and refresh
-                st.warning("⏳ Payment is still processing. Please wait a moment and refresh the page.")
-                st.stop()
-        except Exception as e:
-            st.error(f"Could not verify payment: {e}")
-            st.stop()
-    else:
-        st.query_params.clear()
+if params.get("paddle") == "success":
+    activate_plan(email, params.get("plan", "basic"))
+    st.query_params.clear()
+    st.success("🎉 Welcome to your new plan!")
+    st.rerun()
 
 if params.get("paypal") == "cancel":
     st.info("Subscription cancelled. You can try again from the Plans page.")
@@ -264,8 +244,8 @@ if st.session_state.get("page") == "pricing":
 
     # Build return URLs dynamically
     app_url = os.getenv("APP_URL", "http://localhost:8501")
-    success_url = f"{app_url}/?paypal=success"
-    cancel_url  = f"{app_url}/?paypal=cancel"
+    success_url = f"{app_url}/?paddle=success"
+    cancel_url  = f"{app_url}/?paddle=cancel"
 
     st.markdown("""
         <div style="text-align: center; padding: 1rem 0 2rem;">
@@ -312,7 +292,7 @@ if st.session_state.get("page") == "pricing":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#534AB7; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Basic →", use_container_width=True, key="basic_btn"):
-                with st.spinner("Redirecting to PayPal..."):
+                with st.spinner("Redirecting to paddle..."):
                     checkout_url = create_checkout_session(
                         email=email,
                         price_id=BASIC_PRICE_ID,
@@ -338,7 +318,7 @@ if st.session_state.get("page") == "pricing":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#10b981; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Pro →", use_container_width=True, key="pro_btn"):
-                with st.spinner("Redirecting to PayPal..."):
+                with st.spinner("Redirecting to paddle..."):
                     checkout_url = create_checkout_session(
                         email=email,
                         price_id=PRO_PRICE_ID,
