@@ -34,7 +34,6 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
     payload = {
         "items": [{"price_id": price_id, "quantity": 1}],
         "customer": {"email": email},
-        "success_url": success_url,
         "collection_mode": "automatic",
     }
     resp = requests.post(
@@ -42,9 +41,7 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
         json=payload,
         headers=_headers(),
     )
-    # Temporarily return error for debugging
-    if resp.status_code != 200:
-        raise ValueError(f"Paddle error {resp.status_code}: {resp.text}")
+    resp.raise_for_status()
     data = resp.json()["data"]
     return data["checkout"]["url"]
 
