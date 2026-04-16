@@ -306,14 +306,18 @@ if st.session_state.get("page") == "pricing":
             st.markdown("<div style='text-align:center; margin-top:12px; color:#534AB7; font-size:13px;'>Current plan</div>", unsafe_allow_html=True)
         else:
             if st.button("Upgrade to Basic →", use_container_width=True, key="basic_btn"):
-                with st.spinner("Redirecting to paddle..."):
-                    checkout_url = create_checkout_session(
-                        email=email,
-                        price_id=BASIC_PRICE_ID,
-                        success_url=success_url,
-                        cancel_url=cancel_url,
+                txn = create_checkout_session(
+                    email=email,
+                    price_id=BASIC_PRICE_ID,
+                    success_url=success_url,
+                    cancel_url=cancel_url,
                     )
-                st.markdown(f'<meta http-equiv="refresh" content="0; url={checkout_url}">', unsafe_allow_html=True)
+                            txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
+                            st.markdown(f"""
+                            <script>
+                                Paddle.Checkout.open({{ transactionId: '{txn_id}' }});
+                            </script>
+                        """, unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
