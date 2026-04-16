@@ -256,7 +256,7 @@ if st.session_state.get("page") == "pricing":
         st.rerun()
 
     # Build return URLs dynamically
-    app_url = os.getenv("APP_URL", "http://localhost:8501")
+    app_url = os.getenv("APP_URL", "http://localhost:8501").rstrip("/")
     token = st.session_state.get("token", "")
     success_url = f"{app_url}/?paddle=success&token={token}"
     cancel_url  = f"{app_url}/?token={token}"
