@@ -312,9 +312,7 @@ if st.session_state.get("page") == "pricing":
                     success_url=success_url,
                     cancel_url=cancel_url,
                 )
-                txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
-                st.session_state["paddle_txn"] = txn_id
-                st.rerun()
+                st.markdown(f'<a href="{txn}" target="_blank" id="paddle_link"></a><script>document.getElementById("paddle_link").click();</script>', unsafe_allow_html=True)
 
     with col3:
         st.markdown("""
@@ -339,9 +337,7 @@ if st.session_state.get("page") == "pricing":
                     success_url=success_url,
                     cancel_url=cancel_url,
                 )
-                txn_id = txn.split("_ptxn=")[-1].split("&")[0] if "_ptxn=" in txn else ""
-                st.session_state["paddle_txn"] = txn_id
-                st.rerun()
+                st.markdown(f'<a href="{txn}" target="_blank" id="paddle_link_pro"></a><script>document.getElementById("paddle_link_pro").click();</script>', unsafe_allow_html=True)
 
     if st.session_state.get("paddle_txn"):
         txn_id = st.session_state.pop("paddle_txn")
