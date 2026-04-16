@@ -1,6 +1,7 @@
 import os
 import json
 import requests
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,19 +32,9 @@ def _headers() -> dict:
 
 # ── Checkout ──────────────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    payload = {
-        "items": [{"price_id": price_id, "quantity": 1}],
-        "customer": {"email": email},
-        "collection_mode": "automatic",
-    }
-    resp = requests.post(
-        f"{PADDLE_BASE_URL}/transactions",
-        json=payload,
-        headers=_headers(),
-    )
-    resp.raise_for_status()
-    data = resp.json()["data"]
-    return data["checkout"]["url"]
+    encoded_email = urllib.parse.quote(email)
+    encoded_success = urllib.parse.quote(success_url)
+    return f"https://buy.paddle.com/product/{price_id}?guest_email={encoded_email}&success_url={encoded_success}"
 
 
 # ── Plan activation ───────────────────────────────────────────────────────────
