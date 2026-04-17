@@ -26,9 +26,6 @@ def _headers() -> dict:
     }
 
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    import urllib.parse
-    
-    # Create Paddle transaction
     payload = {
         "items": [{"price_id": price_id, "quantity": 1}],
         "customer": {"email": email},
@@ -41,15 +38,7 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
     )
     resp.raise_for_status()
     data = resp.json()["data"]
-    txn_id = data["id"]
-    
-    # Return URL to our checkout page
-    webhook_url = os.getenv("WEBHOOK_URL", "https://shimmering-vibrancy-production-0516.up.railway.app")
-    params = urllib.parse.urlencode({
-        "txn": txn_id,
-        "success_url": success_url,
-    })
-    return f"{webhook_url}/checkout?{params}"
+    return data["checkout"]["url"]
 
 def _get_user(email: str) -> dict:
     result = supabase.table("user_plans").select("*").eq("email", email).execute()

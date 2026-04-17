@@ -195,6 +195,14 @@ st.markdown("""
 handle_google_callback()
 
 if not is_logged_in():
+    _ptxn = st.query_params.get("_ptxn", "")
+    if _ptxn:
+        st.markdown(f"""
+            <div style="background:#0f1117; min-height:100vh; display:flex; justify-content:center; align-items:center;">
+                <p style="color:white; font-family:sans-serif; font-size:18px;">⏳ Opening secure checkout...</p>
+            </div>
+        """, unsafe_allow_html=True)
+        st.stop()
     render_login_page()
     st.stop()
 
