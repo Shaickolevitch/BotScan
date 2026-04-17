@@ -28,7 +28,9 @@ st.markdown(f"""
             const urlParams = new URLSearchParams(window.location.search);
             const txn = urlParams.get('_ptxn');
             if (txn) {{
-                Paddle.Checkout.open({{ transactionId: txn }});
+                setTimeout(function() {{
+                    Paddle.Checkout.open({{ transactionId: txn }});
+                }}, 1000);
             }}
         }});
     </script>

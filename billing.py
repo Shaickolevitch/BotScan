@@ -26,20 +26,15 @@ def _headers() -> dict:
     }
 
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    payload = {
-        "items": [{"price_id": price_id, "quantity": 1}],
-        "customer": {"email": email},
-        "collection_mode": "automatic",
-        "checkout": {"url": success_url},
+    import urllib.parse
+    base = "https://buy.paddle.com/checkout"
+    params = {
+        "items[0][priceId]": price_id,
+        "items[0][quantity]": "1",
+        "customer[email]": email,
+        "successUrl": success_url,
     }
-    resp = requests.post(
-        f"{PADDLE_BASE_URL}/transactions",
-        json=payload,
-        headers=_headers(),
-    )
-    resp.raise_for_status()
-    data = resp.json()["data"]
-    return data["checkout"]["url"]
+    return f"{base}?{urllib.parse.urlencode(params)}"
 
 def _get_user(email: str) -> dict:
     result = supabase.table("user_plans").select("*").eq("email", email).execute()
