@@ -8,3 +8,5 @@ openpyxl
 sendgrid
 httpx
 requests
+fastapi
+uvicorn
