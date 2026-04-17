@@ -202,11 +202,9 @@ name = user["name"]
 picture = user.get("picture", "")
 
 # ── Paddle return handling ────────────────────────────────────────────────────
-params = st.query_params
 if params.get("paddle") == "success":
-    activate_plan(email, params.get("plan", "basic"))
     st.query_params.clear()
-    st.success("🎉 Welcome to your new plan!")
+    st.success("🎉 Payment received! Your plan will activate shortly.")
     st.rerun()
 
 if params.get("paddle") == "cancel":
