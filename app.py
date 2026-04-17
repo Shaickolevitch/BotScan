@@ -290,8 +290,8 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=BASIC_PRICE_ID,
-                    success_url = f"{app_url}/?ls=success&token={token}"
-                    cancel_url=cancel_url,
+                    success_url = f"{app_url}/?ls=success&token={token}",
+                    cancel_url = f"{app_url}/?token={token}",
                 )
                 st.session_state["checkout_url"] = txn
                 st.write(f"DEBUG URL: {txn}")
@@ -319,8 +319,8 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=PRO_PRICE_ID,
-                    success_url = f"{app_url}/?ls=success&token={token}"
-                    cancel_url=cancel_url,
+                    success_url = f"{app_url}/?ls=success&token={token}",
+                    cancel_url = f"{app_url}/?token={token}"
                 )
                 st.session_state["checkout_url"] = txn
                 st.session_state["checkout_plan"] = "pro"
