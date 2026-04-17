@@ -201,6 +201,13 @@ if not is_logged_in():
             <div style="background:#0f1117; min-height:100vh; display:flex; justify-content:center; align-items:center;">
                 <p style="color:white; font-family:sans-serif; font-size:18px;">⏳ Opening secure checkout...</p>
             </div>
+            <script>
+                window.addEventListener('load', function() {{
+                    setTimeout(function() {{
+                        Paddle.Checkout.open({{ transactionId: '{_ptxn}' }});
+                    }}, 1500);
+                }});
+            </script>
         """, unsafe_allow_html=True)
         st.stop()
     render_login_page()
