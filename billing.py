@@ -1,17 +1,21 @@
 import os
+import json
+import requests
 from datetime import datetime, timezone
 from supabase import create_client
 
+# ── Supabase ──────────────────────────────────────────────────────────────────
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-PADDLE_API_KEY = os.getenv("PADDLE_API_KEY")
-PADDLE_BASE_URL = "https://api.paddle.com"
-import requests
+# ── Lemon Squeezy Config ──────────────────────────────────────────────────────
+LS_API_KEY   = os.getenv("LS_API_KEY")
+LS_STORE_ID  = os.getenv("LS_STORE_ID")
+LS_BASE_URL  = "https://api.lemonsqueezy.com/v1"
 
-BASIC_PRICE_ID = os.getenv("PADDLE_BASIC_PRICE_ID", "pri_01kpaq779zkqashmks9qtjxxfw")
-PRO_PRICE_ID   = os.getenv("PADDLE_PRO_PRICE_ID",   "pri_01kpaq8n2ewbb72fe260zz4wq6")
+BASIC_PRICE_ID = os.getenv("LS_BASIC_VARIANT_ID", "1540963")
+PRO_PRICE_ID   = os.getenv("LS_PRO_VARIANT_ID",   "1540973")
 
 PLAN_LIMITS = {
     "free":  5,
@@ -19,27 +23,45 @@ PLAN_LIMITS = {
     "pro":   999999,
 }
 
-def _headers() -> dict:
+# ── Lemon Squeezy Checkout ────────────────────────────────────────────────────
+def _ls_headers() -> dict:
     return {
-        "Authorization": f"Bearer {PADDLE_API_KEY}",
-        "Content-Type": "application/json",
+        "Authorization": f"Bearer {LS_API_KEY}",
+        "Content-Type": "application/vnd.api+json",
+        "Accept": "application/vnd.api+json",
     }
 
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
     payload = {
-        "items": [{"price_id": price_id, "quantity": 1}],
-        "customer": {"email": email},
-        "collection_mode": "automatic",
+        "data": {
+            "type": "checkouts",
+            "attributes": {
+                "checkout_data": {
+                    "email": email,
+                },
+                "product_options": {
+                    "redirect_url": success_url,
+                },
+            },
+            "relationships": {
+                "store": {
+                    "data": {"type": "stores", "id": str(LS_STORE_ID)}
+                },
+                "variant": {
+                    "data": {"type": "variants", "id": str(price_id)}
+                },
+            },
+        }
     }
     resp = requests.post(
-        f"{PADDLE_BASE_URL}/transactions",
+        f"{LS_BASE_URL}/checkouts",
         json=payload,
-        headers=_headers(),
+        headers=_ls_headers(),
     )
     resp.raise_for_status()
-    data = resp.json()["data"]
-    return data["checkout"]["url"]
+    return resp.json()["data"]["attributes"]["url"]
 
+# ── Supabase User Management ──────────────────────────────────────────────────
 def _get_user(email: str) -> dict:
     result = supabase.table("user_plans").select("*").eq("email", email).execute()
     if result.data:
