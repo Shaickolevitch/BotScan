@@ -18,23 +18,7 @@ from emailer import send_analysis_email
 # ── Page config ───────────────────────────────────────────────────────────────
 st.set_page_config(page_title="BotScan", page_icon="🔍", layout="centered")
 
-# ── Paddle.js ─────────────────────────────────────────────────────────────────
-PADDLE_CLIENT_TOKEN = os.getenv("PADDLE_CLIENT_TOKEN", "")
-st.markdown(f"""
-    <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
-    <script>
-        window.addEventListener('load', function() {{
-            Paddle.Initialize({{ token: '{PADDLE_CLIENT_TOKEN}' }});
-            const urlParams = new URLSearchParams(window.location.search);
-            const txn = urlParams.get('_ptxn');
-            if (txn) {{
-                setTimeout(function() {{
-                    Paddle.Checkout.open({{ transactionId: txn }});
-                }}, 1000);
-            }}
-        }});
-    </script>
-""", unsafe_allow_html=True)
+
 
 # ── Number formatter ──────────────────────────────────────────────────────────
 def fmt(n):
@@ -195,21 +179,6 @@ st.markdown("""
 handle_google_callback()
 
 if not is_logged_in():
-    _ptxn = st.query_params.get("_ptxn", "")
-    if _ptxn:
-        st.markdown(f"""
-            <div style="background:#0f1117; min-height:100vh; display:flex; justify-content:center; align-items:center;">
-                <p style="color:white; font-family:sans-serif; font-size:18px;">⏳ Opening secure checkout...</p>
-            </div>
-            <script>
-                window.addEventListener('load', function() {{
-                    setTimeout(function() {{
-                        Paddle.Checkout.open({{ transactionId: '{_ptxn}' }});
-                    }}, 1500);
-                }});
-            </script>
-        """, unsafe_allow_html=True)
-        st.stop()
     render_login_page()
     st.stop()
 
@@ -218,17 +187,13 @@ email = user["email"]
 name = user["name"]
 picture = user.get("picture", "")
 
-# ── Paddle return handling ────────────────────────────────────────────────────
-# ── Paddle return handling ────────────────────────────────────────────────────
+# ── LemonSqueezy return handling ────────────────────────────────────────────────────
+
 params = st.query_params
-if params.get("paddle") == "success":
+if params.get("ls") == "success":
     st.query_params.clear()
     st.success("🎉 Payment received! Your plan will activate shortly.")
     st.rerun()
-
-if params.get("paddle") == "cancel":
-    st.info("Subscription cancelled.")
-    st.query_params.clear()
 
 # ── Top nav ───────────────────────────────────────────────────────────────────
 usage = get_usage_display(email)
@@ -325,7 +290,7 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=BASIC_PRICE_ID,
-                    success_url=f"{app_url}/?paddle=success&plan=basic&token={token}",
+                    success_url = f"{app_url}/?ls=success&token={token}"
                     cancel_url=cancel_url,
                 )
                 st.session_state["checkout_url"] = txn
@@ -354,7 +319,7 @@ if st.session_state.get("page") == "pricing":
                 txn = create_checkout_session(
                     email=email,
                     price_id=PRO_PRICE_ID,
-                    success_url=f"{app_url}/?paddle=success&plan=pro&token={token}",
+                    success_url = f"{app_url}/?ls=success&token={token}"
                     cancel_url=cancel_url,
                 )
                 st.session_state["checkout_url"] = txn
