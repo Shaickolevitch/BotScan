@@ -202,13 +202,15 @@ name = user["name"]
 picture = user.get("picture", "")
 
 # ── Paddle return handling ────────────────────────────────────────────────────
+# ── Paddle return handling ────────────────────────────────────────────────────
+params = st.query_params
 if params.get("paddle") == "success":
     st.query_params.clear()
     st.success("🎉 Payment received! Your plan will activate shortly.")
     st.rerun()
 
 if params.get("paddle") == "cancel":
-    st.info("Subscription cancelled. You can try again from the Plans page.")
+    st.info("Subscription cancelled.")
     st.query_params.clear()
 
 # ── Top nav ───────────────────────────────────────────────────────────────────
