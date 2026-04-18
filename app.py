@@ -303,7 +303,7 @@ if st.session_state.get("page") == "pricing":
         st.markdown("""
             <div class="plan-card">
                 <div style="font-size:20px; font-weight:700; color:#f9fafb; margin-bottom:8px;">Pro</div>
-                <div style="font-size:36px; font-weight:800; color:#10b981;">$29</div>
+                <div style="font-size:36px; font-weight:800; color:#10b981;">$20</div>
                 <div style="color:#6b7280; font-size:13px; margin-bottom:16px;">per month</div>
                 <hr style="border-color:#2a2d3a;" />
                 <div style="color:#e5e7eb; font-size:14px; margin:12px 0;">✅ Unlimited analyses</div>
