@@ -294,7 +294,6 @@ if st.session_state.get("page") == "pricing":
                     cancel_url = f"{app_url}/?token={token}",
                 )
                 st.session_state["checkout_url"] = txn
-                st.write(f"DEBUG URL: {txn}")
                 st.session_state["checkout_plan"] = "basic"
             if st.session_state.get("checkout_url") and st.session_state.get("checkout_plan") == "basic":
                 st.link_button("🔗 Click here to complete payment", st.session_state["checkout_url"])
