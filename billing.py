@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 from datetime import datetime, timezone
 from supabase import create_client
@@ -9,13 +8,12 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# ── Lemon Squeezy Config ──────────────────────────────────────────────────────
-LS_API_KEY   = os.getenv("LS_API_KEY")
-LS_STORE_ID  = os.getenv("LS_STORE_ID")
-LS_BASE_URL  = "https://api.lemonsqueezy.com/v1"
+# ── Ching Config ──────────────────────────────────────────────────────────────
+CHING_API_KEY  = os.getenv("CHING_API_KEY")
+CHING_BASE_URL = "https://api.ching.co.il/ching/v1"
 
-BASIC_PRICE_ID = os.getenv("LS_BASIC_VARIANT_ID", "1540963")
-PRO_PRICE_ID   = os.getenv("LS_PRO_VARIANT_ID",   "1540973")
+BASIC_PRICE_ID = os.getenv("CHING_BASIC_PRICE_ID", "price_-TkWqrl3SDYD")
+PRO_PRICE_ID   = os.getenv("CHING_PRO_PRICE_ID",   "price_EuqUC_M3C_FA")
 
 PLAN_LIMITS = {
     "free":  5,
@@ -23,50 +21,64 @@ PLAN_LIMITS = {
     "pro":   999999,
 }
 
-# ── Lemon Squeezy Checkout ────────────────────────────────────────────────────
-def _ls_headers() -> dict:
+# ── Ching Helpers ─────────────────────────────────────────────────────────────
+def _ching_headers() -> dict:
     return {
-        "Authorization": f"Bearer {LS_API_KEY}",
-        "Content-Type": "application/vnd.api+json",
-        "Accept": "application/vnd.api+json",
+        "Authorization": f"Bearer {CHING_API_KEY}",
+        "Content-Type": "application/json",
     }
 
-def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    payload = {
-        "data": {
-            "type": "checkouts",
-            "attributes": {
-                "checkout_data": {
-                    "email": email,
-                },
-                "product_options": {
-                    "redirect_url": success_url,
-                },
-            },
-            "relationships": {
-                "store": {
-                    "data": {"type": "stores", "id": str(LS_STORE_ID)}
-                },
-                "variant": {
-                    "data": {"type": "variants", "id": str(price_id)}
-                },
-            },
-        }
-    }
-    resp = requests.post(
-        f"{LS_BASE_URL}/checkouts",
-        json=payload,
-        headers=_ls_headers(),
+def _get_or_create_ching_customer(email: str, name: str = "") -> str:
+    """Return existing Ching customer id for this email, or create one."""
+    # Search existing customers by email
+    resp = requests.get(
+        f"{CHING_BASE_URL}/customers",
+        headers=_ching_headers(),
+        params={"email": email},
     )
     resp.raise_for_status()
-    return resp.json()["data"]["attributes"]["url"]
+    customers = resp.json().get("data", [])
+    if customers:
+        return customers[0]["id"]
+
+    # Create new customer
+    resp = requests.post(
+        f"{CHING_BASE_URL}/customers",
+        headers=_ching_headers(),
+        json={"email": email, "name": name or email},
+    )
+    resp.raise_for_status()
+    return resp.json()["data"]["id"]
+
+# ── Checkout Session ──────────────────────────────────────────────────────────
+def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
+    """Create a Ching hosted checkout session and return the redirect URL."""
+    customer_id = _get_or_create_ching_customer(email)
+
+    resp = requests.post(
+        f"{CHING_BASE_URL}/checkout_sessions",
+        headers=_ching_headers(),
+        json={
+            "customer": customer_id,
+            "price": price_id,
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+        },
+    )
+    resp.raise_for_status()
+    return resp.json()["data"]["url"]
 
 # ── Supabase User Management ──────────────────────────────────────────────────
 def _get_user(email: str) -> dict:
     result = supabase.table("user_plans").select("*").eq("email", email).execute()
     if result.data:
         return result.data[0]
-    return {"email": email, "plan": "free", "usage": 0, "usage_reset": datetime.now(timezone.utc).strftime("%Y-%m")}
+    return {
+        "email": email,
+        "plan": "free",
+        "usage": 0,
+        "usage_reset": datetime.now(timezone.utc).strftime("%Y-%m"),
+    }
 
 def _save_user(user: dict):
     supabase.table("user_plans").upsert(user).execute()
