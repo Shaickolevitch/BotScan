@@ -80,8 +80,6 @@ Return ONLY a JSON object with no markdown, no explanation, just this:
     )
 
     raw = message.content[0].text
-    print("Claude raw response:", raw)
-
     clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
     return json.loads(clean)

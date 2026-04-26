@@ -86,10 +86,10 @@ def ching_webhook():
     raw_body = request.get_data()
     signature = request.headers.get("Ching-Signature", "")
 
-    if CHING_WEBHOOK_SECRET:
-        if not verify_signature(raw_body, signature, CHING_WEBHOOK_SECRET):
-            print("[WARN] Invalid webhook signature")
-            return jsonify({"error": "invalid signature"}), 401
+    # Fail closed: reject if secret not configured or sig invalid
+    if not CHING_WEBHOOK_SECRET or not verify_signature(raw_body, signature, CHING_WEBHOOK_SECRET):
+        print("[WARN] Invalid or missing webhook signature")
+        return jsonify({"error": "invalid signature"}), 401
 
     event = json.loads(raw_body)
     event_type = event.get("type")

@@ -16,6 +16,7 @@ def save_to_history(url: str, result: dict, language: str = "en", email: str = "
 
     entry = {
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"),
+        "email": email,
         "url": url,
         "username": result["username"],
         "verdict": result["verdict"],

@@ -1,5 +1,6 @@
 import os
 import io
+import html
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -492,7 +493,7 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                                 <span class="{verdict_class}" style="font-size:28px; font-weight:700;">{verdict_icon} {verdict}</span>
                             </div>
                         """, unsafe_allow_html=True)
-                        st.markdown(f'<div class="section-title" style="margin-top:16px;">@{result["username"]}</div>', unsafe_allow_html=True)
+                        st.markdown(f'<div class="section-title" style="margin-top:16px;">@{html.escape(result["username"])}</div>', unsafe_allow_html=True)
 
                     c1, c2, c3 = st.columns(3)
                     c1.metric(t["followers"], fmt(result['followers']))
@@ -514,19 +515,19 @@ if st.button(t["analyze_button"], type="primary", use_container_width=True):
                     c3.metric(t["replies"], fmt(result['replies']))
                     c4.metric(t["impressions"], fmt(result['impressions']))
 
-                    st.markdown(f'<div class="tweet-quote">{result["tweet_text"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="tweet-quote">{html.escape(result["tweet_text"])}</div>', unsafe_allow_html=True)
 
                     st.markdown("---")
                     st.markdown(f'<div class="section-title">{t["tweet_analysis"]}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="analysis-box">{result["tweet_analysis"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="analysis-box">{html.escape(result["tweet_analysis"])}</div>', unsafe_allow_html=True)
 
                     st.markdown(f'<div class="section-title">{t["profile_analysis"]}</div>', unsafe_allow_html=True)
-                    st.markdown(f'<div class="analysis-box">{result["profile_analysis"]}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="analysis-box">{html.escape(result["profile_analysis"])}</div>', unsafe_allow_html=True)
 
                     if result["red_flags"]:
                         st.markdown(f'<div class="section-title">{t["red_flags"]}</div>', unsafe_allow_html=True)
                         for flag in result["red_flags"]:
-                            st.markdown(f'<div class="red-flag-box">🚩 {flag}</div>', unsafe_allow_html=True)
+                            st.markdown(f'<div class="red-flag-box">🚩 {html.escape(flag)}</div>', unsafe_allow_html=True)
                     else:
                         st.success(t["no_red_flags"])
 
@@ -616,7 +617,7 @@ else:
         verdict = entry["verdict"]
         icon = "🟢" if verdict == "Organic" else "🟡" if verdict == "Suspicious" else "🔴"
         with st.expander(f"{icon} @{entry['username']} — {verdict} ({entry['organic_score']}/100) · {entry['timestamp']}"):
-            st.markdown(f'<div class="tweet-quote">{entry["tweet_text"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="tweet-quote">{html.escape(entry["tweet_text"])}</div>', unsafe_allow_html=True)
             if st.button("🗑️ Delete", key=f"del_{entry['timestamp']}_{entry['username']}"):
                 history.remove(entry)
                 import json
@@ -628,13 +629,13 @@ else:
             c2.metric(t["followers"], fmt(entry['followers']))
             c3.metric(t["likes"], fmt(entry['likes']))
             st.markdown(f'<div class="section-title" style="margin-top:12px;">{t["tweet_analysis"]}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="analysis-box">{entry["tweet_analysis"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="analysis-box">{html.escape(entry["tweet_analysis"])}</div>', unsafe_allow_html=True)
             st.markdown(f'<div class="section-title">{t["profile_analysis"]}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="analysis-box">{entry["profile_analysis"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="analysis-box">{html.escape(entry["profile_analysis"])}</div>', unsafe_allow_html=True)
             if entry["red_flags"]:
                 st.markdown(f'<div class="section-title">{t["red_flags"]}</div>', unsafe_allow_html=True)
                 for flag in entry["red_flags"]:
-                    st.markdown(f'<div class="red-flag-box">🚩 {flag}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="red-flag-box">🚩 {html.escape(flag)}</div>', unsafe_allow_html=True)
             st.markdown(f"[{t['view_tweet']}]({entry['url']})")
 
 # ── Feedback ──────────────────────────────────────────────────────────────────
