@@ -653,6 +653,11 @@ with st.expander("💬 Feedback / Contact Developer"):
 
 st.markdown("""
     <div style="text-align:center; padding:2rem 0 1rem;">
+        <div style="display:flex; justify-content:center; gap:20px; margin-bottom:8px;">
+            <a href="/?page=terms" target="_self" style="color:#6b7280; font-size:12px; text-decoration:none;">Terms</a>
+            <a href="/?page=privacy" target="_self" style="color:#6b7280; font-size:12px; text-decoration:none;">Privacy</a>
+            <a href="/?page=refund" target="_self" style="color:#6b7280; font-size:12px; text-decoration:none;">Refund Policy</a>
+        </div>
         <p style="color:#4b5563; font-size:12px;">© 2026 Shai Gian. All rights reserved.</p>
     </div>
 """, unsafe_allow_html=True)
