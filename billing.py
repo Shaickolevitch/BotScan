@@ -54,13 +54,16 @@ def _get_or_create_ching_customer(email: str, name: str = "") -> str:
 
 # ── Checkout Session ──────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    print(f"[DEBUG] Full URL: {CHING_BASE_URL}/checkout_sessions")
-    customer_id = _get_or_create_ching_customer(email)
+    print(f"[DEBUG] create_checkout_session called with email={email} price_id={price_id}")
+    try:
+        customer_id = _get_or_create_ching_customer(email)
+    except Exception as e:
+        print(f"[DEBUG] Customer creation failed: {e}")
+        raise
 
-    print(f"[DEBUG] Creating checkout session")
+    print(f"[DEBUG] Full URL: {CHING_BASE_URL}/checkout_sessions")
     print(f"[DEBUG] customer_id: {customer_id}")
     print(f"[DEBUG] price_id: {price_id}")
-    print(f"[DEBUG] success_url: {success_url}")
 
     resp = requests.post(
         f"{CHING_BASE_URL}/checkout_sessions",
