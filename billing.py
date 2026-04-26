@@ -12,8 +12,8 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 CHING_API_KEY  = os.getenv("CHING_API_KEY")
 CHING_BASE_URL = "https://api.ching.co.il/ching/v1"
 
-BASIC_PRICE_ID = os.getenv("CHING_BASIC_PRICE_ID", "price_-TkWqrl3SDYD")
-PRO_PRICE_ID   = os.getenv("CHING_PRO_PRICE_ID",   "price_EuqUC_M3C_FA")
+BASIC_PRICE_ID = os.getenv("CHING_BASIC_PRICE_ID", "price_c7-dEwvWhexi")
+PRO_PRICE_ID   = os.getenv("CHING_PRO_PRICE_ID",   "price_h_tb3zHuaZ7U")
 
 PLAN_LIMITS = {
     "free":  5,
@@ -29,30 +29,32 @@ def _ching_headers() -> dict:
     }
 
 def _get_or_create_ching_customer(email: str, name: str = "") -> str:
-    """Return existing Ching customer id for this email, or create one."""
-    # Search existing customers by email
-    resp = requests.get(
-        f"{CHING_BASE_URL}/customers",
-        headers=_ching_headers(),
-        params={"email": email},
-    )
-    resp.raise_for_status()
-    customers = resp.json().get("data", [])
-    if customers:
-        return customers[0]["id"]
+    """
+    Look up ching_customer_id from Supabase first.
+    If not stored, create a new Ching customer and save the ID.
+    """
+    user = _get_user(email)
+    existing_id = user.get("ching_customer_id")
+    if existing_id:
+        return existing_id
 
-    # Create new customer
+    # Create new Ching customer
     resp = requests.post(
         f"{CHING_BASE_URL}/customers",
         headers=_ching_headers(),
         json={"email": email, "name": name or email},
     )
     resp.raise_for_status()
-    return resp.json()["data"]["id"]
+    customer_id = resp.json()["data"]["id"]
+
+    # Save to Supabase
+    user["ching_customer_id"] = customer_id
+    _save_user(user)
+
+    return customer_id
 
 # ── Checkout Session ──────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
-    """Create a Ching hosted checkout session and return the redirect URL."""
     customer_id = _get_or_create_ching_customer(email)
 
     resp = requests.post(
