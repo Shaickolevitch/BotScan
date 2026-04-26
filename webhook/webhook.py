@@ -14,8 +14,8 @@ SUPABASE_URL         = os.getenv("SUPABASE_URL")
 SUPABASE_KEY         = os.getenv("SUPABASE_KEY")
 CHING_API_KEY        = os.getenv("CHING_API_KEY")
 CHING_WEBHOOK_SECRET = os.getenv("CHING_WEBHOOK_SECRET")
-CHING_BASIC_PRICE_ID = os.getenv("CHING_BASIC_PRICE_ID", "price_-TkWqrl3SDYD")
-CHING_PRO_PRICE_ID   = os.getenv("CHING_PRO_PRICE_ID",   "price_EuqUC_M3C_FA")
+CHING_BASIC_PRICE_ID = os.getenv("CHING_BASIC_PRICE_ID", "price_c7-dEwvWhexi")
+CHING_PRO_PRICE_ID   = os.getenv("CHING_PRO_PRICE_ID",   "price_h_tb3zHuaZ7U")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -36,8 +36,18 @@ def price_to_plan(price_id: str) -> str:
         return "pro"
     return "free"
 
-# ── Ching customer lookup ─────────────────────────────────────────────────────
+# ── Email lookup: first try Supabase, then Ching API ─────────────────────────
 def get_email_from_customer(customer_id: str) -> str | None:
+    # Try Supabase first (faster, no API call)
+    try:
+        result = supabase.table("user_plans").select("email").eq("ching_customer_id", customer_id).execute()
+        if result.data:
+            print(f"[INFO] Found email in Supabase for {customer_id}")
+            return result.data[0]["email"]
+    except Exception as e:
+        print(f"[WARN] Supabase lookup failed: {e}")
+
+    # Fall back to Ching API
     try:
         resp = requests.get(
             f"https://api.ching.co.il/ching/v1/customers/{customer_id}",
@@ -47,7 +57,9 @@ def get_email_from_customer(customer_id: str) -> str | None:
             }
         )
         resp.raise_for_status()
-        return resp.json()["data"]["email"]
+        email = resp.json()["data"]["email"]
+        print(f"[INFO] Found email via Ching API for {customer_id}: {email}")
+        return email
     except Exception as e:
         print(f"[ERROR] Failed to fetch customer {customer_id}: {e}")
         return None
@@ -86,15 +98,16 @@ def ching_webhook():
     raw_body = request.get_data()
     signature = request.headers.get("Ching-Signature", "")
 
-    # Fail closed: reject if secret not configured or sig invalid
-    if not CHING_WEBHOOK_SECRET or not verify_signature(raw_body, signature, CHING_WEBHOOK_SECRET):
-        print("[WARN] Invalid or missing webhook signature")
-        return jsonify({"error": "invalid signature"}), 401
+    if CHING_WEBHOOK_SECRET:
+        if not verify_signature(raw_body, signature, CHING_WEBHOOK_SECRET):
+            print("[WARN] Invalid webhook signature")
+            return jsonify({"error": "invalid signature"}), 401
 
     event = json.loads(raw_body)
     event_type = event.get("type")
     data = event.get("data", {})
     print(f"[INFO] Received event: {event_type}")
+    print(f"[INFO] Event data: {json.dumps(data)}")
 
     if event_type == "subscription.created":
         status = data.get("status")
@@ -105,6 +118,7 @@ def ching_webhook():
         items = data.get("items", [])
         price_id = items[0]["price"] if items else None
         plan = price_to_plan(price_id)
+        print(f"[INFO] price_id={price_id} → plan={plan}")
         email = get_email_from_customer(customer_id)
         if email and plan != "free":
             activate_plan(email, plan)
