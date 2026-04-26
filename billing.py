@@ -29,33 +29,37 @@ def _ching_headers() -> dict:
     }
 
 def _get_or_create_ching_customer(email: str, name: str = "") -> str:
-    """
-    Look up ching_customer_id from Supabase first.
-    If not stored, create a new Ching customer and save the ID.
-    """
     user = _get_user(email)
     existing_id = user.get("ching_customer_id")
     if existing_id:
+        print(f"[DEBUG] Reusing existing Ching customer: {existing_id}")
         return existing_id
 
-    # Create new Ching customer
+    print(f"[DEBUG] Creating new Ching customer for {email}")
     resp = requests.post(
         f"{CHING_BASE_URL}/customers",
         headers=_ching_headers(),
         json={"email": email, "name": name or email},
     )
+    print(f"[DEBUG] Customer create status: {resp.status_code}")
+    print(f"[DEBUG] Customer create response: {resp.text}")
     resp.raise_for_status()
     customer_id = resp.json()["data"]["id"]
 
-    # Save to Supabase
     user["ching_customer_id"] = customer_id
     _save_user(user)
+    print(f"[DEBUG] Saved customer_id to Supabase: {customer_id}")
 
     return customer_id
 
 # ── Checkout Session ──────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
     customer_id = _get_or_create_ching_customer(email)
+
+    print(f"[DEBUG] Creating checkout session")
+    print(f"[DEBUG] customer_id: {customer_id}")
+    print(f"[DEBUG] price_id: {price_id}")
+    print(f"[DEBUG] success_url: {success_url}")
 
     resp = requests.post(
         f"{CHING_BASE_URL}/checkout_sessions",
@@ -67,6 +71,8 @@ def create_checkout_session(email: str, price_id: str, success_url: str, cancel_
             "cancel_url": cancel_url,
         },
     )
+    print(f"[DEBUG] Checkout session status: {resp.status_code}")
+    print(f"[DEBUG] Checkout session response: {resp.text}")
     resp.raise_for_status()
     return resp.json()["data"]["url"]
 
