@@ -54,6 +54,7 @@ def _get_or_create_ching_customer(email: str, name: str = "") -> str:
 
 # ── Checkout Session ──────────────────────────────────────────────────────────
 def create_checkout_session(email: str, price_id: str, success_url: str, cancel_url: str) -> str:
+    print(f"[DEBUG] Full URL: {CHING_BASE_URL}/checkout_sessions")
     customer_id = _get_or_create_ching_customer(email)
 
     print(f"[DEBUG] Creating checkout session")
